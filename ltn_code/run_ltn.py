@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu May 11 2017
+Created on Mon Oct 30 2017
 
-@author: spranger
+@author: lbechberger
 """
 
-import numpy as np
 import tensorflow as tf
 import logictensornetworks as ltn
 import sys, re, random
