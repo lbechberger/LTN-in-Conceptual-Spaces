@@ -173,8 +173,33 @@ print "Overall accuracy on unlabeled training data: {0}".format(accuracy)
 
 # visualize the results for 2D and 3D data
 if n_dims == 2:
-    # TODO: implement
-    pass
+    fig = plt.figure(figsize=(16,10))
+    xs = map(lambda x: x[0], test_data)
+    ys = map(lambda x: x[1], test_data)
+
+    # figure out how many subplots to create (rows and columns)
+    num_concepts = len(concepts)
+    root = int(sqrt(num_concepts)) + 1
+    subplot_start = 10*root
+    if (root * (root - 1)) >= num_concepts:
+        subplot_start += 100*(root-1)
+    else:
+        subplot_start += 100*root
+    
+    # for each concept, create a colored scatter plot of all unlabeled data points
+    counter = 1
+    for label, memberships in concept_memberships.iteritems():
+        colors = cm.jet(memberships)
+        colmap = cm.ScalarMappable(cmap=cm.jet)
+        colmap.set_array(memberships)
+        ax = fig.add_subplot(subplot_start + counter)
+        ax.set_title(label)
+        yg = ax.scatter(xs, ys, c=colors, marker='o')
+        counter += 1
+   
+    plt.show()
+
+
 elif n_dims == 3:
     fig = plt.figure(figsize=(16,10))
     xs = map(lambda x: x[0], test_data)
@@ -196,7 +221,7 @@ elif n_dims == 3:
         colors = cm.jet(memberships)
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)
-        ax = fig.add_subplot(subplot_start + counter,projection='3d')
+        ax = fig.add_subplot(subplot_start + counter, projection='3d')
         ax.set_title(label)
         yg = ax.scatter(xs, ys, zs, c=colors, marker='o')
         counter += 1
