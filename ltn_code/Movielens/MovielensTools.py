@@ -7,6 +7,15 @@ Created on Tue Nov 14 10:20:06 2017
 @author: nicop
 """
 
+import numpy as np
+
+from matplotlib import pyplot as plt
+
+from sklearn import manifold
+
+
+
+
 
 """
 Read and write movies.
@@ -37,8 +46,11 @@ class MovieManager:
             
             for line in moviefile:
                 
+                #remove whitespaces and line breaks
+                clean_line = line.rstrip()
+                
                 # each line consists of id, title and genres separated by commas
-                columns = line.split(',')
+                columns = clean_line.split(',')
                 
                 #first column is id
                 movie_id = columns[0]
@@ -102,6 +114,9 @@ class MovieManager:
     def get_movies(self):
         return self.movies.values()
                 
+    
+    
+    
 class Movie:
 
     
@@ -124,6 +139,8 @@ class Movie:
         
         self.tags.append(tag)
         
+     def getGenres(self):
+        return self.genres
     
      def get_number_of_ratings(self):
          return len(self.ratings)
@@ -182,3 +199,141 @@ class Movie:
              string = string + " " + tag
 
         return string
+    
+    
+    
+    
+'''
+Embedd movies into real vector space using multidimensional scaling
+'''
+class MovieEmbedder:
+    
+    
+     def __init__(self):
+         self.dimension = 2
+         self.metric = True
+         self.runs = 4
+         self.max_iter=3000
+         self.eps=1e-6
+         self.random_state=None
+         self.dissimilarity="precomputed"
+         self.threads=1
+         
+     def set_dimensions(self, dimensions):
+         self.dimension = dimensions
+         
+     def set_no_threads(self, threads):
+         self.threads = threads
+    
+     def set_accuracy(self, epsilon):
+         self.eps = epsilon
+        
+     def set_no_runs(self, runs):
+         self.runs = runs
+        
+     def set_max_iterations(self, max_iter):
+         self.max_iter = max_iter
+        
+     def set_metric_MDS(self, metric):
+         self.metric = metric
+        
+        
+     '''
+     Compute matrix consisting of vector representations of movies.
+     i-th row is vector for i-th movie
+     '''
+     def computeRatingBasedVectorRepresentation(self, movies):
+        
+        distances = list()
+    
+        for m1 in movies:
+            for m2 in movies:
+                distances.append(m1.compute_rating_based_distance(m2))
+        
+        dist_matrix = np.array(distances)
+        dist_matrix = dist_matrix.reshape(len(movies),len(movies))
+                
+        mds = manifold.MDS(n_components=self.dimension, 
+                           metric=self.metric,
+                           n_init=self.runs,
+                           max_iter=self.max_iter, 
+                           eps=self.eps,  
+                           n_jobs=self.threads,
+                           random_state=self.random_state,
+                           dissimilarity=self.dissimilarity)
+        
+        m = mds.fit(dist_matrix).embedding_
+        
+        return m
+      
+        
+     '''
+     Compute matrix consisting of vector representations of movies.
+     i-th row is vector for i-th movie
+     '''
+     def computeTagBasedVectorRepresentation(self, movies):
+        
+        distances = list()
+    
+        for m1 in movies:
+            for m2 in movies:
+                distances.append(m1.compute_tag_based_distance(m2))
+        
+        dist_matrix = np.array(distances)
+        dist_matrix = dist_matrix.reshape(len(movies),len(movies))
+                
+        mds = manifold.MDS(n_components=self.dimension, 
+                           metric=self.metric,
+                           n_init=self.runs,
+                           max_iter=self.max_iter, 
+                           eps=self.eps,  
+                           n_jobs=self.threads,
+                           random_state=self.random_state,
+                           dissimilarity=self.dissimilarity)
+        
+        m = mds.fit(dist_matrix).embedding_
+        
+        return m
+    
+     '''
+     Write movie vectors in matrix line by line
+     we print each movie vector once for each genre that it contains
+     '''
+     def printToCSVFile(self, movies, movie_matrix, filename):
+         
+         
+         
+         with open(filename, 'w+') as file:
+             
+             file.write('movie, genre, vector\n')
+             
+             for i in range(0, len(movies)):
+                 
+                 #prepare vector string
+                 vectorString = ''
+                 for j in range(0, movie_matrix.shape[1]):
+                         vectorString = vectorString + str(movie_matrix[i][j])
+                         if(j < movie_matrix.shape[1] - 1):
+                             vectorString = vectorString + ','
+                         else:
+                             vectorString = vectorString + '\n'
+                 
+                 #print vector string for each genre
+                 for genre in movies[i].getGenres():
+                     
+                     file.write(movies[i].getTitle() + ',' + genre + ',' + vectorString)
+                        
+    
+    
+     def plotScatterPlot(self, movies, movie_matrix, filename):
+        
+        plt.rcParams.update({'font.size': 7})
+        plt.figure(figsize=(4000,2000))
+        fig, ax = plt.subplots()
+        ax.scatter(movie_matrix[:,0], movie_matrix[:,1])
+
+        for i, movie in enumerate(movies):
+            ax.annotate(movie.getTitle(), (movie_matrix[i,0],movie_matrix[i,1]))
+    
+        plt.savefig(filename)
+        
