@@ -1,7 +1,0 @@
-horse
-cow
-donkey
-pony
-bw
-lion
-zebra
