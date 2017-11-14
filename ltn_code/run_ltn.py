@@ -7,9 +7,19 @@ Created on Mon Oct 30 2017
 
 import tensorflow as tf
 import logictensornetworks as ltn
+
 import sys, re, random
 import ConfigParser
+
 import numpy as np
+
+from pylab import cm
+import matplotlib
+matplotlib.use('TkAgg')
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+
+from math import sqrt
 
 # fix random seed to ensure reproducibility
 random.seed(42)
@@ -159,13 +169,39 @@ for (true_label, vector) in unlabeled_feature_vectors:
     idx += 1
 
 accuracy = (1.0 * num_correct) / len(unlabeled_feature_vectors)
-print "Overall accuracy: {0}".format(accuracy)
+print "Overall accuracy on unlabeled training data: {0}".format(accuracy)
 
-# TODO: visualize the results for 2D and 3D data
+# visualize the results for 2D and 3D data
 if n_dims == 2:
+    # TODO: implement
     pass
 elif n_dims == 3:
-    pass
+    fig = plt.figure(figsize=(16,10))
+    xs = map(lambda x: x[0], test_data)
+    ys = map(lambda x: x[1], test_data)
+    zs = map(lambda x: x[2], test_data)
+
+    # figure out how many subplots to create (rows and columns)
+    num_concepts = len(concepts)
+    root = int(sqrt(num_concepts)) + 1
+    subplot_start = 10*root
+    if (root * (root - 1)) >= num_concepts:
+        subplot_start += 100*(root-1)
+    else:
+        subplot_start += 100*root
+    
+    # for each concept, create a colored scatter plot of all unlabeled data points
+    counter = 1
+    for label, memberships in concept_memberships.iteritems():
+        colors = cm.jet(memberships)
+        colmap = cm.ScalarMappable(cmap=cm.jet)
+        colmap.set_array(memberships)
+        ax = fig.add_subplot(subplot_start + counter,projection='3d')
+        ax.set_title(label)
+        yg = ax.scatter(xs, ys, zs, c=colors, marker='o')
+        counter += 1
+   
+    plt.show()
 
 # close the TensorFlow session and go home
 sess.close()
