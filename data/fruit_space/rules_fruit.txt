@@ -1,1 +1,5 @@
 GrannySmith IMPLIES apple
+lemon DIFFERENT apple
+orange DIFFERENT banana
+banana DIFFERENT lemon
+banana DIFFERENT apple

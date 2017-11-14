@@ -9,6 +9,7 @@ import tensorflow as tf
 import logictensornetworks as ltn
 import sys, re, random
 import ConfigParser
+import numpy as np
 
 # fix random seed to ensure reproducibility
 random.seed(42)
@@ -77,6 +78,7 @@ with open(concepts_file, 'r') as f:
 # parse rules file
 rules = []
 implication_rule = re.compile("(\w+) IMPLIES (\w+)")
+different_concepts_rule = re.compile("(\w+) DIFFERENT (\w+)")
 with open(rules_file, 'r') as f:
     for line in f:
         matches = implication_rule.findall(line)
@@ -86,10 +88,19 @@ with open(rules_file, 'r') as f:
             # 'left IMPLIES right' <--> '(NOT left) OR right'
             rules.append(ltn.Clause([ltn.Literal(False, concepts[left], conceptual_space), 
                                      ltn.Literal(True, concepts[right], conceptual_space)], label = "{0}I{1}".format(left, right)))
+        else:
+            matches = different_concepts_rule.findall(line)
+            if len(matches) > 0:
+                left = matches[0][0]
+                right = matches[0][1]
+                # 'left DIFFERENT right' <--> 'NOT (left AND right)' <--> (NOT left) OR (NOT right)'
+                rules.append(ltn.Clause([ltn.Literal(False, concepts[left], conceptual_space), 
+                                     ltn.Literal(False, concepts[right], conceptual_space)], label = "{0}DC{1}".format(left, right)))
 
 # sample sample_percent of the data points as labeled ones
 cutoff = int(len(feature_vectors) * sample_rate)
 labeled_feature_vectors = feature_vectors[:cutoff]
+unlabeled_feature_vectors = feature_vectors[cutoff:]
 
 # add rules: labeled data points need to be classified correctly
 for label, vec in labeled_feature_vectors:
@@ -127,7 +138,34 @@ for i in range(1000):
 
 #KB.save(sess)  # save the result if needed
 
-# TODO: evaluate the results somehow
-                       
+# evaluate the results: classify each of the unlabeled data points and compute our accuracy
+test_data = map(lambda x: x[1], unlabeled_feature_vectors)
+concept_memberships = {}
+for label, concept in concepts.iteritems():
+    concept_memberships[label] = np.squeeze(sess.run(concept.tensor(),{conceptual_space.tensor:test_data}))
+
+idx = 0
+num_correct = 0
+for (true_label, vector) in unlabeled_feature_vectors:
+    predicted_label = None
+    predicted_confidence = 0
+    for label, memberships in concept_memberships.iteritems():
+        conf = memberships[idx]
+        if conf > predicted_confidence:
+            predicted_confidence = conf
+            predicted_label = label
+    if predicted_label == true_label:
+        num_correct += 1
+    idx += 1
+
+accuracy = (1.0 * num_correct) / len(unlabeled_feature_vectors)
+print "Overall accuracy: {0}".format(accuracy)
+
+# TODO: visualize the results for 2D and 3D data
+if n_dims == 2:
+    pass
+elif n_dims == 3:
+    pass
+
 # close the TensorFlow session and go home
 sess.close()
