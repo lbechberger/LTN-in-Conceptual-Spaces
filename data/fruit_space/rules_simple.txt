@@ -1,0 +1,10 @@
+apple DIFFERENT banana
+apple DIFFERENT lemon
+apple DIFFERENT orange
+apple DIFFERENT pear
+banana DIFFERENT lemon
+banana DIFFERENT orange
+banana DIFFERENT pear
+lemon DIFFERENT orange
+lemon DIFFERENT pear
+orange DIFFERENT pear

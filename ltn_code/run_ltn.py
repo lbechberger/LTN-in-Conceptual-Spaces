@@ -173,6 +173,7 @@ print "Overall accuracy on unlabeled training data: {0}".format(accuracy)
 
 # visualize the results for 2D and 3D data
 if n_dims == 2:
+    
     fig = plt.figure(figsize=(16,10))
     xs = map(lambda x: x[0], test_data)
     ys = map(lambda x: x[1], test_data)
@@ -195,12 +196,14 @@ if n_dims == 2:
         ax = fig.add_subplot(subplot_start + counter)
         ax.set_title(label)
         yg = ax.scatter(xs, ys, c=colors, marker='o')
+        cb = fig.colorbar(colmap)
         counter += 1
    
     plt.show()
 
 
 elif n_dims == 3:
+    
     fig = plt.figure(figsize=(16,10))
     xs = map(lambda x: x[0], test_data)
     ys = map(lambda x: x[1], test_data)
@@ -224,8 +227,9 @@ elif n_dims == 3:
         ax = fig.add_subplot(subplot_start + counter, projection='3d')
         ax.set_title(label)
         yg = ax.scatter(xs, ys, zs, c=colors, marker='o')
+        cb = fig.colorbar(colmap)
         counter += 1
-   
+        
     plt.show()
 
 # close the TensorFlow session and go home
