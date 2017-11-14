@@ -8,6 +8,7 @@ Created on Mon Oct 30 2017
 import tensorflow as tf
 import logictensornetworks as ltn
 import sys, re, random
+import ConfigParser
 
 # fix random seed to ensure reproducibility
 random.seed(42)
@@ -31,15 +32,21 @@ ltn.default_clauses_aggregator = "min"
 # TODO: comment; default: 1e-6
 ltn.default_positive_fact_penality = 0  
 
-# grab parameters
-if sys.argv < 6:
-    raise Exception("Need five arguments: 'python run_ltn.py feature_vectors.csv concepts.txt rules.txt n_dims sample_percent")
 
-features_file = sys.argv[1]
-concepts_file = sys.argv[2]
-rules_file = sys.argv[3]
-n_dims = int(sys.argv[4])
-sample_percent = float(sys.argv[5])
+if sys.argv < 3:
+    raise Exception("Need two arguments: 'python run_ltn.py config.cfg config_name'")
+
+config_file_name = sys.argv[1]
+config_name = sys.argv[2]
+
+# read configuartion from the given config file
+config = ConfigParser.RawConfigParser()
+config.read(config_file_name)
+features_file = config.get(config_name, "features_file")
+concepts_file = config.get(config_name, "concepts_file")
+rules_file = config.get(config_name, "rules_file")
+n_dims = config.getint(config_name, "num_dimensions")
+sample_rate = config.getfloat(config_name, "sample_rate")
 
 # create conceptual space
 conceptual_space = ltn.Domain(n_dims, label="ConceptualSpace")
@@ -81,7 +88,7 @@ with open(rules_file, 'r') as f:
                                      ltn.Literal(True, concepts[right], conceptual_space)], label = "{0}I{1}".format(left, right)))
 
 # sample sample_percent of the data points as labeled ones
-cutoff = int(len(feature_vectors) * sample_percent)
+cutoff = int(len(feature_vectors) * sample_rate)
 labeled_feature_vectors = feature_vectors[:cutoff]
 
 # add rules: labeled data points need to be classified correctly
