@@ -1,5 +1,4 @@
-apple
 banana
-lemon
 orange
+lemon
 pear

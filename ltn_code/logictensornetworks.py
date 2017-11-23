@@ -161,8 +161,11 @@ class Predicate:
                                               self.domain.columns+1,
                                               self.domain.columns+1],stddev=0.5)),0,-1 ,
                              name = "W"+label)  # upper triangualr matrix
-        self.u = tf.Variable(tf.ones([layers,1]),
-                             name = "u"+label)
+        # modification by lbechberger: instead of using tf.ones, use tf.constant() to make sure that norm of u is ~5
+        # (which in turn ensures that the membership function can reach values close to 0 and 1)
+        self.u = tf.Variable(tf.constant(5.0/layers, shape=[layers,1]), name = "u"+label)
+#        self.u = tf.Variable(tf.ones([layers,1]),
+#                             name = "u"+label)
         self.parameters = [self.W]
 
     def tensor(self,domain=None):
@@ -278,7 +281,8 @@ class KnowledgeBase:
 
     def penalize_positive_facts(self):
         tensor_for_positive_facts = [tf.reduce_sum(Literal(True,lit.predicate,lit.domain).tensor,keep_dims=True) for cl in self.clauses for lit in cl.literals]
-        return tf.reduce_sum(tf.concat(tensor_for_positive_facts),0)
+        # change by lbechberger        
+        return tf.reduce_sum(tensor_for_positive_facts,0)
 
     def save(self,sess, version = ""):
         save_path = self.saver.save(sess,self.save_path+self.label+version+".ckpt")

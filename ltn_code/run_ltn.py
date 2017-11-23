@@ -28,20 +28,20 @@ random.seed(42)
 # LTN setup #
 #############
 
-# number of RBF kernels per predicate; default: 5
+# number of receptive fields per predicate; default: 5
 ltn.default_layers = 1                 
-# TODO: comment; default: 0.0000001
+# factor to which large weights are penalized; default: 0.0000001
 ltn.default_smooth_factor = 1e-10       
-# options: 'product', 'yager2', 'luk', 'goedel'; default: 'product'
-ltn.default_tnorm = "product"  
-# aggregate within a predicate (for complex ones); options: 'product', 'mean', 'gmean', 'hmean', 'min'; default: 'min'         
+# appropriate t-conorm is used to compute disjunction of literals within clauses; options: 'product', 'yager2', 'luk', 'goedel'; default: 'product'
+ltn.default_tnorm = "luk"#"product"  
+# aggregation across data points when computing validity of a clause; options: 'product', 'mean', 'gmean', 'hmean', 'min'; default: 'min'         
 ltn.default_aggregator = "min"        
 # optimizing algorithm to use; options: 'ftrl', 'gd', 'ada', 'rmsprop'; default: 'gd' 
 ltn.default_optimizer = "rmsprop"    
-# aggregate over clauses, i.e., rules; options: 'min', 'mean', 'hmean', 'wmean'; default: 'min'   
+# aggregate over clauses to define overall satisfiability of KB; options: 'min', 'mean', 'hmean', 'wmean'; default: 'min'   
 ltn.default_clauses_aggregator = "min"  
-# TODO: comment; default: 1e-6
-ltn.default_positive_fact_penality = 0  
+# penalty for predicates that are true everywhere; default: 1e-6
+ltn.default_positive_fact_penality = 1e-5  
 
 
 if sys.argv < 3:
@@ -117,8 +117,13 @@ for label, vec in labeled_feature_vectors:
     const = ltn.Constant(label, vec, conceptual_space)
     rules.append(ltn.Clause([ltn.Literal(True, concepts[label], const)], label="{0}Const".format(label)))
 
-# all data points in the conceptual space over which we would like to optimize
-data = map(lambda x: x[1], feature_vectors)
+# all data points in the conceptual space over which we would like to optimize:
+# both the original samples as well as a grid over the space (in order to improve generalization)
+samples = map(lambda x: x[1], feature_vectors)
+grid = [[i,j,k] for i in np.linspace(-0.2,1.2,20,endpoint=True)
+                for j in np.linspace(-0.2,1.2,20,endpoint=True)
+                for k in np.linspace(-0.2,1.2,20,endpoint=True)]
+data = samples + grid
 feed_dict = { conceptual_space.tensor : data }
 
 # knowledge base = set of all clauses (all of them should be optimized)
@@ -153,6 +158,9 @@ test_data = map(lambda x: x[1], unlabeled_feature_vectors)
 concept_memberships = {}
 for label, concept in concepts.iteritems():
     concept_memberships[label] = np.squeeze(sess.run(concept.tensor(),{conceptual_space.tensor:test_data}))
+    max_membership = max(concept_memberships[label])
+    min_membership = min(concept_memberships[label])
+    print "{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership)
 
 idx = 0
 num_correct = 0
