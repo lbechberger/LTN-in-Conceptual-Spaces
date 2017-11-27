@@ -24,40 +24,40 @@ from math import sqrt
 # fix random seed to ensure reproducibility
 random.seed(42)
 
-#############
-# LTN setup #
-#############
-
-# number of receptive fields per predicate; default: 5
-ltn.default_layers = 1                 
-# factor to which large weights are penalized; default: 0.0000001
-ltn.default_smooth_factor = 1e-10       
-# appropriate t-conorm is used to compute disjunction of literals within clauses; options: 'product', 'yager2', 'luk', 'goedel'; default: 'product'
-ltn.default_tnorm = "luk"#"product"  
-# aggregation across data points when computing validity of a clause; options: 'product', 'mean', 'gmean', 'hmean', 'min'; default: 'min'         
-ltn.default_aggregator = "min"        
-# optimizing algorithm to use; options: 'ftrl', 'gd', 'ada', 'rmsprop'; default: 'gd' 
-ltn.default_optimizer = "rmsprop"    
-# aggregate over clauses to define overall satisfiability of KB; options: 'min', 'mean', 'hmean', 'wmean'; default: 'min'   
-ltn.default_clauses_aggregator = "min"  
-# penalty for predicates that are true everywhere; default: 1e-6
-ltn.default_positive_fact_penality = 1e-5  
-
-
+# parse command line arguments
 if sys.argv < 3:
     raise Exception("Need two arguments: 'python run_ltn.py config.cfg config_name'")
-
 config_file_name = sys.argv[1]
 config_name = sys.argv[2]
 
 # read configuartion from the given config file
 config = ConfigParser.RawConfigParser()
 config.read(config_file_name)
+
+# general setup
 features_file = config.get(config_name, "features_file")
 concepts_file = config.get(config_name, "concepts_file")
 rules_file = config.get(config_name, "rules_file")
 n_dims = config.getint(config_name, "num_dimensions")
-sample_rate = config.getfloat(config_name, "sample_rate")
+training_percentage = config.getfloat(config_name, "training_percentage")
+
+# LTN setup
+def read_ltn_variable(name, default):
+    if config.has_option(config_name, name):
+        return config.get(config_name, name)
+    elif config.has_option("ltn-default", name):
+        return config.get("ltn-default", name)  
+    else:
+        return default
+        
+ltn.default_layers                  = int(read_ltn_variable("ltn_layers", ltn.default_layers))
+ltn.default_smooth_factor           = float(read_ltn_variable("ltn_smooth_factor", ltn.default_smooth_factor))     
+ltn.default_tnorm                   = read_ltn_variable("ltn_tnorm", ltn.default_tnorm)
+ltn.default_aggregator              = read_ltn_variable("ltn_aggregator", ltn.default_aggregator)        
+ltn.default_optimizer               = read_ltn_variable("ltn_optimizer", ltn.default_optimizer)
+ltn.default_clauses_aggregator      = read_ltn_variable("ltn_clauses_aggregator", ltn.default_clauses_aggregator)
+ltn.default_positive_fact_penality  = float(read_ltn_variable("ltn_positive_fact_penalty", ltn.default_positive_fact_penality))
+ltn.default_norm_of_u               = float(read_ltn_variable("ltn_norm_of_u", ltn.default_norm_of_u))
 
 # create conceptual space
 conceptual_space = ltn.Domain(n_dims, label="ConceptualSpace")
@@ -107,23 +107,27 @@ with open(rules_file, 'r') as f:
                 rules.append(ltn.Clause([ltn.Literal(False, concepts[left], conceptual_space), 
                                      ltn.Literal(False, concepts[right], conceptual_space)], label = "{0}DC{1}".format(left, right)))
 
-# sample sample_percent of the data points as labeled ones
-cutoff = int(len(feature_vectors) * sample_rate)
-labeled_feature_vectors = feature_vectors[:cutoff]
-unlabeled_feature_vectors = feature_vectors[cutoff:]
+# sample training_percentage of the data points as labeled ones
+cutoff = int(len(feature_vectors) * training_percentage)
+training_vectors = feature_vectors[:cutoff]
+test_vectors = feature_vectors[cutoff:]
 
 # add rules: labeled data points need to be classified correctly
-for label, vec in labeled_feature_vectors:
+for label, vec in training_vectors:
     const = ltn.Constant(label, vec, conceptual_space)
+    # classify under correct label
     rules.append(ltn.Clause([ltn.Literal(True, concepts[label], const)], label="{0}Const".format(label)))
+    # don't classify under incorrect label (pick a random one)
+    negative_label = random.choice(concepts.keys())
+    while negative_label == label:
+        negative_label = random.choice(concepts.keys())
+#    for negative_label in concepts.keys():
+    if (negative_label != label): #and random.uniform(0,1) <= 0.5:
+        rules.append(ltn.Clause([ltn.Literal(False, concepts[negative_label], const)], label="{0}ConstNot".format(negative_label)))
+    
 
 # all data points in the conceptual space over which we would like to optimize:
-# both the original samples as well as a grid over the space (in order to improve generalization)
-samples = map(lambda x: x[1], feature_vectors)
-grid = [[i,j,k] for i in np.linspace(-0.2,1.2,20,endpoint=True)
-                for j in np.linspace(-0.2,1.2,20,endpoint=True)
-                for k in np.linspace(-0.2,1.2,20,endpoint=True)]
-data = samples + grid
+data = map(lambda x: x[1], training_vectors)
 feed_dict = { conceptual_space.tensor : data }
 
 # knowledge base = set of all clauses (all of them should be optimized)
@@ -153,8 +157,8 @@ for i in range(1000):
 
 #KB.save(sess)  # save the result if needed
 
-# evaluate the results: classify each of the unlabeled data points and compute our accuracy
-test_data = map(lambda x: x[1], unlabeled_feature_vectors)
+# evaluate the results: classify each of the test data points and compute our accuracy
+test_data = map(lambda x: x[1], test_vectors)
 concept_memberships = {}
 for label, concept in concepts.iteritems():
     concept_memberships[label] = np.squeeze(sess.run(concept.tensor(),{conceptual_space.tensor:test_data}))
@@ -164,7 +168,7 @@ for label, concept in concepts.iteritems():
 
 idx = 0
 num_correct = 0
-for (true_label, vector) in unlabeled_feature_vectors:
+for (true_label, vector) in test_vectors:
     predicted_label = None
     predicted_confidence = 0
     for label, memberships in concept_memberships.iteritems():
@@ -176,8 +180,8 @@ for (true_label, vector) in unlabeled_feature_vectors:
         num_correct += 1
     idx += 1
 
-accuracy = (1.0 * num_correct) / len(unlabeled_feature_vectors)
-print "Overall accuracy on unlabeled training data: {0}".format(accuracy)
+accuracy = (1.0 * num_correct) / len(test_vectors)
+print "Overall accuracy on test data: {0}".format(accuracy)
 
 # visualize the results for 2D and 3D data
 if n_dims == 2:

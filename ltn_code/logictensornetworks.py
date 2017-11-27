@@ -11,6 +11,7 @@ default_optimizer = "gd"
 default_aggregator = "min"
 default_positive_fact_penality = 1e-6
 default_clauses_aggregator = "min"
+default_norm_of_u = 5.0
 
 def train_op(loss, optimization_algorithm):
     if optimization_algorithm == "ftrl":
@@ -163,7 +164,7 @@ class Predicate:
                              name = "W"+label)  # upper triangualr matrix
         # modification by lbechberger: instead of using tf.ones, use tf.constant() to make sure that norm of u is ~5
         # (which in turn ensures that the membership function can reach values close to 0 and 1)
-        self.u = tf.Variable(tf.constant(5.0/layers, shape=[layers,1]), name = "u"+label)
+        self.u = tf.Variable(tf.constant(default_norm_of_u/layers, shape=[layers,1]), name = "u"+label)
 #        self.u = tf.Variable(tf.ones([layers,1]),
 #                             name = "u"+label)
         self.parameters = [self.W]
