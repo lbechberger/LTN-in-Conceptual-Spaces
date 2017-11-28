@@ -40,6 +40,7 @@ concepts_file = config.get(config_name, "concepts_file")
 rules_file = config.get(config_name, "rules_file")
 n_dims = config.getint(config_name, "num_dimensions")
 training_percentage = config.getfloat(config_name, "training_percentage")
+max_iter = config.getint(config_name, "max_iter")
 
 # LTN setup
 def read_ltn_variable(name, default):
@@ -66,14 +67,10 @@ conceptual_space = ltn.Domain(n_dims, label="ConceptualSpace")
 feature_vectors = []
 with open(features_file, 'r') as f:
     for line in f:
-        chunks = line.split(",")
-        label = chunks[0]
-        if label == '':
-            label = None
-        vec = map(float, chunks[1:])
-        if len(vec) != n_dims:
-            raise Exception("Incorrect dimensionality: Expected {0}, found {1} in: {2}".format(n_dims, len(vec), line))
-        feature_vectors.append((label, vec))
+        chunks = line.replace('\n','').split(",")
+        vec = map(float, chunks[:n_dims])
+        labels = [label for label in chunks[n_dims:] if label != '']
+        feature_vectors.append((labels, vec))
 # shuffle them --> beginning of shuffle list will be treated as labeled, end as unlabeled
 random.shuffle(feature_vectors)
 
@@ -113,17 +110,16 @@ training_vectors = feature_vectors[:cutoff]
 test_vectors = feature_vectors[cutoff:]
 
 # add rules: labeled data points need to be classified correctly
-for label, vec in training_vectors:
-    const = ltn.Constant(label, vec, conceptual_space)
-    # classify under correct label
-    rules.append(ltn.Clause([ltn.Literal(True, concepts[label], const)], label="{0}Const".format(label)))
+for labels, vec in training_vectors:
+    const = ltn.Constant("_".join(map(str, vec)), vec, conceptual_space)
+    for label in labels:
+        # classify under correct labels
+        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], const)], label="{0}Const".format(label)))
+    
     # don't classify under incorrect label (pick a random one)
-    negative_label = random.choice(concepts.keys())
-    while negative_label == label:
-        negative_label = random.choice(concepts.keys())
-#    for negative_label in concepts.keys():
-    if (negative_label != label): #and random.uniform(0,1) <= 0.5:
-        rules.append(ltn.Clause([ltn.Literal(False, concepts[negative_label], const)], label="{0}ConstNot".format(negative_label)))
+    possible_negative_labels = list(set(concepts.keys()) - set(labels))
+    negative_label = random.choice(possible_negative_labels)
+    rules.append(ltn.Clause([ltn.Literal(False, concepts[negative_label], const)], label="{0}ConstNot".format(negative_label)))
     
 
 # all data points in the conceptual space over which we would like to optimize:
@@ -147,8 +143,8 @@ while sat_level < 1e-10:
     print "initialization",sat_level
 print(0, " ------> ", sat_level)
 
-# train for at most 1000 iterations (stop if we hit 99% satisfiability earlier)
-for i in range(1000):
+# train for at most max_iter iterations (stop if we hit 99% satisfiability earlier)
+for i in range(max_iter):
   KB.train(sess, feed_dict = feed_dict)
   sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
   print(i + 1, " ------> ", sat_level)
@@ -157,7 +153,7 @@ for i in range(1000):
 
 #KB.save(sess)  # save the result if needed
 
-# evaluate the results: classify each of the test data points and compute our accuracy
+# evaluate the results: classify each of the test data points
 test_data = map(lambda x: x[1], test_vectors)
 concept_memberships = {}
 for label, concept in concepts.iteritems():
@@ -166,9 +162,10 @@ for label, concept in concepts.iteritems():
     min_membership = min(concept_memberships[label])
     print "{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership)
 
+# now compute the "one error"
 idx = 0
-num_correct = 0
-for (true_label, vector) in test_vectors:
+num_incorrect = 0
+for (true_labels, vector) in test_vectors:
     predicted_label = None
     predicted_confidence = 0
     for label, memberships in concept_memberships.iteritems():
@@ -176,12 +173,16 @@ for (true_label, vector) in test_vectors:
         if conf > predicted_confidence:
             predicted_confidence = conf
             predicted_label = label
-    if predicted_label == true_label:
-        num_correct += 1
+    if predicted_label not in true_labels:
+        num_incorrect += 1
     idx += 1
 
-accuracy = (1.0 * num_correct) / len(test_vectors)
-print "Overall accuracy on test data: {0}".format(accuracy)
+one_error = (1.0 * num_incorrect) / len(test_vectors)
+print "One error on test data: {0}".format(one_error)
+
+# TODO: implement more error measures
+
+# TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
 
 # visualize the results for 2D and 3D data
 if n_dims == 2:
