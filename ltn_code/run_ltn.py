@@ -180,6 +180,26 @@ for (true_labels, vector) in test_vectors:
 one_error = (1.0 * num_incorrect) / len(test_vectors)
 print "One error on test data: {0}".format(one_error)
 
+# now compute the "coverage"
+idx = 0
+summed_depth = 0
+for (true_labels, vector) in test_vectors:
+    predictions = []
+    for label, memberships in concept_memberships.iteritems():
+        predictions.append((label, memberships[idx]))
+    predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
+    depth = 0
+    labels_to_find = list(true_labels)
+    while depth < len(predictions) and len(labels_to_find) > 0:
+        if predictions[depth][0] in labels_to_find:
+            labels_to_find.remove(predictions[depth][0])
+        depth += 1
+    summed_depth += depth
+    idx += 1
+
+coverage = (1.0 * summed_depth) / len(test_vectors)
+print "Coverage on test data: {0}".format(coverage)
+
 # TODO: implement more error measures
 
 # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
@@ -193,12 +213,16 @@ if n_dims == 2:
 
     # figure out how many subplots to create (rows and columns)
     num_concepts = len(concepts)
-    root = int(sqrt(num_concepts)) + 1
-    subplot_start = 10*root
-    if (root * (root - 1)) >= num_concepts:
-        subplot_start += 100*(root-1)
+    root = int(sqrt(num_concepts))
+    if root * root >= num_concepts:
+        columns = root
+        rows = root
+    elif root * (root + 1) >= num_concepts:
+        columns = root + 1
+        rows = root
     else:
-        subplot_start += 100*root
+        columns = root + 1
+        rows = root
     
     # for each concept, create a colored scatter plot of all unlabeled data points
     counter = 1
@@ -206,7 +230,7 @@ if n_dims == 2:
         colors = cm.jet(memberships)
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)
-        ax = fig.add_subplot(subplot_start + counter)
+        ax = fig.add_subplot(rows, columns, counter)
         ax.set_title(label)
         yg = ax.scatter(xs, ys, c=colors, marker='o')
         cb = fig.colorbar(colmap)
@@ -224,12 +248,16 @@ elif n_dims == 3:
 
     # figure out how many subplots to create (rows and columns)
     num_concepts = len(concepts)
-    root = int(sqrt(num_concepts)) + 1
-    subplot_start = 10*root
-    if (root * (root - 1)) >= num_concepts:
-        subplot_start += 100*(root-1)
+    root = int(sqrt(num_concepts))
+    if root * root >= num_concepts:
+        columns = root
+        rows = root
+    elif root * (root + 1) >= num_concepts:
+        columns = root + 1
+        rows = root
     else:
-        subplot_start += 100*root
+        columns = root + 1
+        rows = root
     
     # for each concept, create a colored scatter plot of all unlabeled data points
     counter = 1
@@ -237,7 +265,7 @@ elif n_dims == 3:
         colors = cm.jet(memberships)
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)
-        ax = fig.add_subplot(subplot_start + counter, projection='3d')
+        ax = fig.add_subplot(rows, columns, counter, projection='3d')
         ax.set_title(label)
         yg = ax.scatter(xs, ys, zs, c=colors, marker='o')
         cb = fig.colorbar(colmap)
