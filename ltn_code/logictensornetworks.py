@@ -1,8 +1,6 @@
 __author__ = 'luciano'
-import sys
 import tensorflow as tf
 import numpy as np
-import pdb
 
 default_layers = 5
 default_smooth_factor = 0.0000001
@@ -12,6 +10,7 @@ default_aggregator = "min"
 default_positive_fact_penality = 1e-6
 default_clauses_aggregator = "min"
 default_norm_of_u = 5.0
+
 
 def train_op(loss, optimization_algorithm):
     if optimization_algorithm == "ftrl":
@@ -153,18 +152,23 @@ class Term(Domain):
         self.tensor = self.function.tensor(self.domain)
 
 class Predicate:
-    def __init__(self, label, domain, layers=default_layers,max_min=0.0):
+    def __init__(self, label, domain, layers= None, max_min=0.0):
         self.label = label
         self.max_min = max_min
         self.domain = domain
-        self.number_of_layers = layers
-        self.W = tf.matrix_band_part(tf.Variable(tf.random_normal([layers,
+        # modification by lbechberger: if we use default_layers as default value in method header, overwriting it from external
+        # files doesn't change anything, so we need to check for it during runtime
+        if layers == None:
+            self.number_of_layers = default_layers
+        else:
+            self.number_of_layers = layers
+        self.W = tf.matrix_band_part(tf.Variable(tf.random_normal([self.number_of_layers,
                                               self.domain.columns+1,
                                               self.domain.columns+1],stddev=0.5)),0,-1 ,
                              name = "W"+label)  # upper triangualr matrix
         # modification by lbechberger: instead of using tf.ones, use tf.constant() to make sure that norm of u is ~5
         # (which in turn ensures that the membership function can reach values close to 0 and 1)
-        self.u = tf.Variable(tf.constant(default_norm_of_u/layers, shape=[layers,1]), name = "u"+label)
+        self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
 #        self.u = tf.Variable(tf.ones([layers,1]),
 #                             name = "u"+label)
         self.parameters = [self.W]
