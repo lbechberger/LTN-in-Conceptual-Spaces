@@ -5,7 +5,8 @@ Logic Tensor Networks ([Paper](https://arxiv.org/abs/1606.04422), [Code](https:/
 
 In this repository, we use LTNs to learn concepts in a conceptual space.
 
-Copyright of "logictensornetworks.py" is retained by Luciano Serafini and Artur d'Avila Garcez.
+Copyright of "logictensornetworks.py" is retained by Luciano Serafini and Artur d'Avila Garcez. The files in `data/Schockaert/` were created based on data downloadable from (https://www.cs.cf.ac.uk/semanticspaces/) and reported in Joaquín Derrac and Steven Schockaert. Inducing semantic relations from conceptual spaces: a data-driven approach to commonsense reasoning, Artificial Intelligence, vol. 228, pages 66-94, 2015.
+
 
 ## Requirements
 
