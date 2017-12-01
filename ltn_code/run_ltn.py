@@ -110,6 +110,7 @@ training_vectors = feature_vectors[:cutoff]
 test_vectors = feature_vectors[cutoff:]
 
 # add rules: labeled data points need to be classified correctly
+i = 1
 for labels, vec in training_vectors:
     const = ltn.Constant("_".join(map(str, vec)), vec, conceptual_space)
     for label in labels:
@@ -120,6 +121,10 @@ for labels, vec in training_vectors:
     possible_negative_labels = list(set(concepts.keys()) - set(labels))
     negative_label = random.choice(possible_negative_labels)
     rules.append(ltn.Clause([ltn.Literal(False, concepts[negative_label], const)], label="{0}ConstNot".format(negative_label)))
+    
+    if i % 1000 == 0:
+        print i
+    i += 1
     
 
 # all data points in the conceptual space over which we would like to optimize:
