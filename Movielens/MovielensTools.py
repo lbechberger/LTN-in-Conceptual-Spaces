@@ -15,7 +15,48 @@ from sklearn import manifold
 
 
 
-
+"""
+Read tags
+"""
+class TagManager:
+    
+    def __init__(self):
+        
+        self.tags = {}
+      
+    def read_tags(self, tagsFilePath):
+        
+        #read tags and put them into corresponding movies
+        with open(tagsFilePath, newline='', encoding="utf8") as tagfile:
+            
+            #skip header
+            tagfile.readline()
+            
+            for line in tagfile:
+        
+                #each line consists of user_id, movie_id, tag and timestamp
+                #separated by comma 
+                columns = line.split(',')
+                
+                tag = columns[2]
+                
+                if not tag in self.tags:
+                    self.tags[tag] = 0
+                
+                #increment count by 1
+                old_count = self.tags[tag]
+                self.tags[tag] = old_count + 1
+    
+    """
+    Print all tags that appear at least n times
+    """            
+    def printFrequent(self, n):
+        
+        for tag in self.tags.keys():
+            count = self.tags[tag]
+            if count >= n:                
+                print("%s: %s"%(tag,count) )
+        
 
 """
 Read and write movies.

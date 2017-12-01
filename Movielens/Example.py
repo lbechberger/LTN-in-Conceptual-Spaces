@@ -10,14 +10,14 @@ from MovielensTools import MovieEmbedder
 
 #read data
 m = MovieManager()
-folder = 'data_small'
+folder = 'data_big'
 movieFilePath = folder + '/movies.csv'
 ratingFilePath = folder + '/ratings.csv'
 tagsFilePath = folder + '/tags.csv'
 m.readData(movieFilePath,ratingFilePath, tagsFilePath)
 
 #find movies that have at least r reviews
-r = 100
+r = 15000
 no_movies = 0
 for movie in m.get_movies():
     if(movie.get_number_of_ratings() >= r):
@@ -47,5 +47,24 @@ for movie in m.get_movies():
 
 m = embedder.computeRatingBasedVectorRepresentation(filtered_movies)
 embedder.printToCSVFile(filtered_movies, m, 'vectors.csv')
-#embedder.plotScatterPlot(filtered_movies,m, 'plot.png')
+
+
+my_genres = ['Action', 'Adventure', 'Children', 'Fantasy', 'Horror']
+genreToMovies = {}
+genreToIDs = {}
+
+for genre in my_genres:
+    genreToMovies[genre] = list()
+    genreToIDs[genre] = list()
+
+for i in range(0, len(filtered_movies)):
+    for genre in my_genres:
+        if genre in filtered_movies[i].getGenres():
+            genreToMovies[genre].append(filtered_movies[i])
+            genreToIDs[genre].append(i)
+    
+for genre in my_genres:
+    print(genre)
+    embedder.plotScatterPlot(genreToMovies[genre],m[genreToIDs[genre],:], genre+'.png')
+
 
