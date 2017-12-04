@@ -67,7 +67,7 @@ conceptual_space = ltn.Domain(n_dims, label="ConceptualSpace")
 feature_vectors = []
 with open(features_file, 'r') as f:
     for line in f:
-        chunks = line.replace('\n','').split(",")
+        chunks = line.replace('\n','').replace('\r', '').split(",")
         vec = map(float, chunks[:n_dims])
         labels = [label for label in chunks[n_dims:] if label != '']
         feature_vectors.append((labels, vec))
@@ -78,12 +78,13 @@ random.shuffle(feature_vectors)
 concepts = {}
 with open(concepts_file, 'r') as f:
     for line in f:       
-        name = line.replace('\n','')
+        name = line.replace('\n','').replace('\r', '')
         concept = ltn.Predicate(name, conceptual_space)
         concepts[name] = concept
 
 # parse rules file
 rules = []
+num_rules = 0
 implication_rule = re.compile("(\w+) IMPLIES (\w+)")
 different_concepts_rule = re.compile("(\w+) DIFFERENT (\w+)")
 with open(rules_file, 'r') as f:
@@ -95,6 +96,7 @@ with open(rules_file, 'r') as f:
             # 'left IMPLIES right' <--> '(NOT left) OR right'
             rules.append(ltn.Clause([ltn.Literal(False, concepts[left], conceptual_space), 
                                      ltn.Literal(True, concepts[right], conceptual_space)], label = "{0}I{1}".format(left, right)))
+            num_rules += 1
         else:
             matches = different_concepts_rule.findall(line)
             if len(matches) > 0:
@@ -103,6 +105,7 @@ with open(rules_file, 'r') as f:
                 # 'left DIFFERENT right' <--> 'NOT (left AND right)' <--> (NOT left) OR (NOT right)'
                 rules.append(ltn.Clause([ltn.Literal(False, concepts[left], conceptual_space), 
                                      ltn.Literal(False, concepts[right], conceptual_space)], label = "{0}DC{1}".format(left, right)))
+                num_rules += 1
 
 # sample training_percentage of the data points as labeled ones
 cutoff = int(len(feature_vectors) * training_percentage)
@@ -130,6 +133,12 @@ for labels, vec in training_vectors:
 # all data points in the conceptual space over which we would like to optimize:
 data = map(lambda x: x[1], training_vectors)
 feed_dict = { conceptual_space.tensor : data }
+
+# print out some diagnostic information
+print("program arguments: {0} {1}".format(config_file_name, config_name))
+print("number of concepts: {0}".format(len(concepts.keys())))
+print("number of rules: {0}".format(num_rules))
+print("number of data points: {0}".format(len(feature_vectors)))
 
 # knowledge base = set of all clauses (all of them should be optimized)
 KB = ltn.KnowledgeBase("ConceptualSpaceKB", rules, "")
@@ -161,51 +170,59 @@ for i in range(max_iter):
 # evaluate the results: classify each of the test data points
 test_data = map(lambda x: x[1], test_vectors)
 concept_memberships = {}
+train_memberships = {}
 for label, concept in concepts.iteritems():
-    concept_memberships[label] = np.squeeze(sess.run(concept.tensor(),{conceptual_space.tensor:test_data}))
+    concept_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:test_data}))
+    train_memberships[label] = np.squeeze(sess.run(concept.tensor(), feed_dict))
     max_membership = max(concept_memberships[label])
     min_membership = min(concept_memberships[label])
     print "{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership)
 
-# now compute the "one error"
-idx = 0
-num_incorrect = 0
-for (true_labels, vector) in test_vectors:
-    predicted_label = None
-    predicted_confidence = 0
-    for label, memberships in concept_memberships.iteritems():
-        conf = memberships[idx]
-        if conf > predicted_confidence:
-            predicted_confidence = conf
-            predicted_label = label
-    if predicted_label not in true_labels:
-        num_incorrect += 1
-    idx += 1
-
-one_error = (1.0 * num_incorrect) / len(test_vectors)
-print "One error on test data: {0}".format(one_error)
-
-# now compute the "coverage"
-idx = 0
-summed_depth = 0
-for (true_labels, vector) in test_vectors:
-    predictions = []
-    for label, memberships in concept_memberships.iteritems():
-        predictions.append((label, memberships[idx]))
-    predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
-    depth = 0
-    labels_to_find = list(true_labels)
-    while depth < len(predictions) and len(labels_to_find) > 0:
-        if predictions[depth][0] in labels_to_find:
-            labels_to_find.remove(predictions[depth][0])
-        depth += 1
-    summed_depth += depth
-    idx += 1
-
-coverage = (1.0 * summed_depth) / len(test_vectors)
-print "Coverage on test data: {0}".format(coverage)
-
 # TODO: implement more error measures
+def one_error(predictions, vectors):
+    """Computes the one error for the given vectors and the given predictions."""
+    idx = 0
+    num_incorrect = 0
+    for (true_labels, vector) in vectors:
+        predicted_label = None
+        predicted_confidence = 0
+        for label, memberships in predictions.iteritems():
+            conf = memberships[idx]
+            if conf > predicted_confidence:
+                predicted_confidence = conf
+                predicted_label = label
+        if predicted_label not in true_labels:
+            num_incorrect += 1
+        idx += 1
+    
+    one_error = (1.0 * num_incorrect) / len(test_vectors)
+    return one_error
+
+def coverage(predictions, vectors):
+    """Computes the coverage for the given vectors and the given predictions."""
+    idx = 0
+    summed_depth = 0
+    for (true_labels, vector) in vectors:
+        filtered_predictions = []
+        for label, memberships in predictions.iteritems():
+            filtered_predictions.append((label, memberships[idx]))
+        filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
+        depth = 0
+        labels_to_find = list(true_labels)
+        while depth < len(filtered_predictions) and len(labels_to_find) > 0:
+            if filtered_predictions[depth][0] in labels_to_find:
+                labels_to_find.remove(filtered_predictions[depth][0])
+            depth += 1
+        summed_depth += depth
+        idx += 1
+    
+    coverage = (1.0 * summed_depth) / len(test_vectors)
+    return coverage
+  
+print("One error on training data: {0}".format(one_error(train_memberships, training_vectors)))
+print("Coverage on training data: {0}".format(coverage(train_memberships, training_vectors)))
+print("One error on test data: {0}".format(one_error(concept_memberships, test_vectors)))
+print("Coverage on test data: {0}".format(coverage(concept_memberships, test_vectors)))
 
 # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
 

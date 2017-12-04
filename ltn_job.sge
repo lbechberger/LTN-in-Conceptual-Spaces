@@ -1,0 +1,21 @@
+#!/bin/bash
+#$ -N LTN
+#$ -l mem=5G
+#$ -l h_rt=10:00:00
+#$ -l cuda=1
+#$ -l cuda_cores=384
+#$ -pe default 2
+#$ -cwd
+#$ -o $HOME/Code/LTN-in-Conceptual-Spaces/sge-logs/
+#$ -e $HOME/Code/LTN-in-Conceptual-Spaces/sge-logs/
+
+export PATH="$HOME/miniconda/bin:$PATH"
+rm /tmp/* -R -f 2> /dev/null
+
+source activate tensorflow
+
+python ltn_code/run_ltn.py $1
+
+source deactivate tensorflow
+
+rm /tmp/* -R -f 2> /dev/null
