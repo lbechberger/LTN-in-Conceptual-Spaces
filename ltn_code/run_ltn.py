@@ -21,12 +21,12 @@ import util
 random.seed(42)
 
 # parse command line arguments
-if sys.argv < 3:
+if len(sys.argv) < 3:
     raise Exception("Need two arguments: 'python run_ltn.py config.cfg config_name'")
 config_file_name = sys.argv[1]
 config_name = sys.argv[2]
 
-if sys.argv >= 4 and sys.argv[3] == '-p':
+if len(sys.argv) > 3 and sys.argv[3] == '-p':
     b_plot = True
 else:
     b_plot = False
