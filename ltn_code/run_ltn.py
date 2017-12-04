@@ -13,13 +13,9 @@ import ConfigParser
 
 import numpy as np
 
-from pylab import cm
-import matplotlib
-matplotlib.use('TkAgg')
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-
 from math import sqrt
+
+import util
 
 # fix random seed to ensure reproducibility
 random.seed(42)
@@ -30,6 +26,10 @@ if sys.argv < 3:
 config_file_name = sys.argv[1]
 config_name = sys.argv[2]
 
+if sys.argv >= 4 and sys.argv[3] == '-p':
+    b_plot = True
+else:
+    b_plot = False
 # read configuartion from the given config file
 config = ConfigParser.RawConfigParser()
 config.read(config_file_name)
@@ -178,57 +178,22 @@ for label, concept in concepts.iteritems():
     min_membership = min(concept_memberships[label])
     print "{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership)
 
-# TODO: implement more error measures
-def one_error(predictions, vectors):
-    """Computes the one error for the given vectors and the given predictions."""
-    idx = 0
-    num_incorrect = 0
-    for (true_labels, vector) in vectors:
-        predicted_label = None
-        predicted_confidence = 0
-        for label, memberships in predictions.iteritems():
-            conf = memberships[idx]
-            if conf > predicted_confidence:
-                predicted_confidence = conf
-                predicted_label = label
-        if predicted_label not in true_labels:
-            num_incorrect += 1
-        idx += 1
-    
-    one_error = (1.0 * num_incorrect) / len(test_vectors)
-    return one_error
-
-def coverage(predictions, vectors):
-    """Computes the coverage for the given vectors and the given predictions."""
-    idx = 0
-    summed_depth = 0
-    for (true_labels, vector) in vectors:
-        filtered_predictions = []
-        for label, memberships in predictions.iteritems():
-            filtered_predictions.append((label, memberships[idx]))
-        filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
-        depth = 0
-        labels_to_find = list(true_labels)
-        while depth < len(filtered_predictions) and len(labels_to_find) > 0:
-            if filtered_predictions[depth][0] in labels_to_find:
-                labels_to_find.remove(filtered_predictions[depth][0])
-            depth += 1
-        summed_depth += depth
-        idx += 1
-    
-    coverage = (1.0 * summed_depth) / len(test_vectors)
-    return coverage
-  
-print("One error on training data: {0}".format(one_error(train_memberships, training_vectors)))
-print("Coverage on training data: {0}".format(coverage(train_memberships, training_vectors)))
-print("One error on test data: {0}".format(one_error(concept_memberships, test_vectors)))
-print("Coverage on test data: {0}".format(coverage(concept_memberships, test_vectors)))
+# compute evaluation measures 
+print("One error on training data: {0}".format(util.one_error(train_memberships, training_vectors)))
+print("Coverage on training data: {0}".format(util.coverage(train_memberships, training_vectors)))
+print("One error on test data: {0}".format(util.one_error(concept_memberships, test_vectors)))
+print("Coverage on test data: {0}".format(util.coverage(concept_memberships, test_vectors)))
 
 # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
 
 # visualize the results for 2D and 3D data
-if n_dims == 2:
-    
+if b_plot and n_dims == 2:
+    from pylab import cm
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
+
     fig = plt.figure(figsize=(16,10))
     xs = map(lambda x: x[0], test_data)
     ys = map(lambda x: x[1], test_data)
@@ -262,6 +227,11 @@ if n_dims == 2:
 
 
 elif n_dims == 3:
+    from pylab import cm
+    import matplotlib
+    matplotlib.use('TkAgg')
+    import matplotlib.pyplot as plt
+    from mpl_toolkits.mplot3d import Axes3D
     
     fig = plt.figure(figsize=(16,10))
     xs = map(lambda x: x[0], test_data)
