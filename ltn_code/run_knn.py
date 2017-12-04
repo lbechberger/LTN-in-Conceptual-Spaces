@@ -36,7 +36,7 @@ training_percentage = config.getfloat(config_name, "training_percentage")
 feature_vectors = []
 with open(features_file, 'r') as f:
     for line in f:
-        chunks = line.replace('\n','').split(",")
+        chunks = line.replace('\n','').replace('\r','').split(",")
         vec = map(float, chunks[:n_dims])
         labels = [label for label in chunks[n_dims:] if label != '']
         feature_vectors.append((labels, vec))
@@ -72,7 +72,7 @@ for label in concepts:
 
 probabilities = classifier.predict_proba(test_data)
 for i in range(len(probabilities)):
-    predictions[concepts[i]] = map(lambda x: x[1], probabilities[i])
+    predictions[concepts[i]] = map(lambda x: x[1] if len(x) > 1 else x, probabilities[i])
 
 # evaluate on test set
 print("One error on test data: {0}".format(util.one_error(predictions, test_vectors)))
