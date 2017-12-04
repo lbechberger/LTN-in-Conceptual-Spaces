@@ -226,7 +226,7 @@ if b_plot and n_dims == 2:
     plt.show()
 
 
-elif n_dims == 3:
+elif b_plot and n_dims == 3:
     from pylab import cm
     import matplotlib
     matplotlib.use('TkAgg')
