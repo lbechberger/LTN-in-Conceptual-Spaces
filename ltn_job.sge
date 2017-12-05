@@ -1,7 +1,7 @@
 #!/bin/bash
 #$ -N LTN
-#$ -l mem=2G
-#$ -l h_rt=00:30:00
+#$ -l mem=8G
+#$ -l h_rt=04:00:00
 #$ -l cuda=1
 #$ -l cuda_cores=384
 #$ -pe default 2
