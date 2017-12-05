@@ -1,6 +1,6 @@
 #!/bin/bash
 #$ -N LTN
-#$ -l mem=8G
+#$ -l mem=4G
 #$ -l h_rt=04:00:00
 #$ -l cuda=1
 #$ -l cuda_cores=384
