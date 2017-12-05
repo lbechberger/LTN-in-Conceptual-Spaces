@@ -5,7 +5,7 @@ Created on Fri Dec  1 17:23:20 2017
 @author: lbechberger
 """
 
-import sys, random, ConfigParser
+import sys, random
 import util
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import MultiLabelBinarizer
@@ -22,45 +22,14 @@ config_file_name = sys.argv[1]
 config_name = sys.argv[2]
 num_neighbors = int(sys.argv[3])
 
-# read configuartion from the given config file
-config = ConfigParser.RawConfigParser()
-config.read(config_file_name)
-
-# general setup
-features_file = config.get(config_name, "features_file")
-concepts_file = config.get(config_name, "concepts_file")
-n_dims = config.getint(config_name, "num_dimensions")
-training_percentage = config.getfloat(config_name, "training_percentage")
-
-# parse features file
-feature_vectors = []
-with open(features_file, 'r') as f:
-    for line in f:
-        chunks = line.replace('\n','').replace('\r','').split(",")
-        vec = map(float, chunks[:n_dims])
-        labels = [label for label in chunks[n_dims:] if label != '']
-        feature_vectors.append((labels, vec))
-# shuffle them --> beginning of shuffle list will be treated as labeled, end as unlabeled
-random.shuffle(feature_vectors)
-
-# parse concepts file
-concepts = []
-with open(concepts_file, 'r') as f:
-    for line in f:       
-        label = line.replace('\n','').replace('\r', '')
-        concepts.append(label)
-
-# sample training_percentage of the data points as labeled ones
-cutoff = int(len(feature_vectors) * training_percentage)
-training_vectors = feature_vectors[:cutoff]
-test_vectors = feature_vectors[cutoff:]
+# read config file
+config = util.parse_config_file(config_file_name, config_name)
 
 # re-format everything for scikit learn
-training_data = np.array(list(map(lambda x: x[1], training_vectors)))
-training_labels = np.array(list(map(lambda x: np.array(x[0]), training_vectors)))
-training_labels = MultiLabelBinarizer(concepts).fit_transform(training_labels)
-test_data = np.array(list(map(lambda x: x[1], test_vectors)))
-
+training_data = np.array(list(map(lambda x: x[1], config["training_vectors"])))
+training_labels = np.array(list(map(lambda x: np.array(x[0]), config["training_vectors"])))
+training_labels = MultiLabelBinarizer(config["concepts"]).fit_transform(training_labels)
+test_data = np.array(list(map(lambda x: x[1], config["test_vectors"])))
 
 # train and use kNN classifier
 classifier = KNeighborsClassifier(num_neighbors)
@@ -78,8 +47,8 @@ def get_predictions(classifier, concepts, data):
 
     return predictions
 
-train_predictions = get_predictions(classifier, concepts, training_data)
-test_predictions = get_predictions(classifier, concepts, test_data)
+train_predictions = get_predictions(classifier, config["concepts"], training_data)
+test_predictions = get_predictions(classifier, config["concepts"], test_data)
 
 # evaluate the predictions
-util.evaluate(train_predictions, training_vectors, test_predictions, test_vectors)
+util.evaluate(train_predictions, config["training_vectors"], test_predictions, config["test_vectors"])
