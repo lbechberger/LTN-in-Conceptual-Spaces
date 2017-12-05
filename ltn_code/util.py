@@ -46,3 +46,14 @@ def coverage(predictions, vectors):
     
     coverage = (1.0 * summed_depth) / len(vectors)
     return coverage
+
+def evaluate(train_predictions, train_vectors, test_predictions, test_vectors):
+    """Evaluate the predictions both on the training and the test set."""
+    
+    # training data (to get an idea about overfitting)
+    print("One error on training data: {0}".format(one_error(train_predictions, train_vectors)))
+    print("Coverage on training data: {0}".format(coverage(train_predictions, train_vectors)))
+    
+    # test data (the stuff that matters)
+    print("One error on test data: {0}".format(one_error(test_predictions, test_vectors)))
+    print("Coverage on test data: {0}".format(coverage(test_predictions, test_vectors)))

@@ -62,18 +62,24 @@ training_labels = MultiLabelBinarizer(concepts).fit_transform(training_labels)
 test_data = np.array(list(map(lambda x: x[1], test_vectors)))
 
 
-# train and use kNN classifierqstat
+# train and use kNN classifier
 classifier = KNeighborsClassifier(num_neighbors)
 classifier.fit(training_data, training_labels)
 
-predictions = {}
-for label in concepts:
-    predictions[label] = []
+def get_predictions(classifier, concepts, data):
+    predictions = {}
+    for label in concepts:
+        predictions[label] = []
+    
+    probabilities = classifier.predict_proba(data)
+    
+    for i in range(len(probabilities)):
+        predictions[concepts[i]] = map(lambda x: x[1] if len(x) > 1 else x, probabilities[i])
 
-probabilities = classifier.predict_proba(test_data)
-for i in range(len(probabilities)):
-    predictions[concepts[i]] = map(lambda x: x[1] if len(x) > 1 else x, probabilities[i])
+    return predictions
 
-# evaluate on test set
-print("One error on test data: {0}".format(util.one_error(predictions, test_vectors)))
-print("Coverage on test data: {0}".format(util.coverage(predictions, test_vectors)))
+train_predictions = get_predictions(classifier, concepts, training_data)
+test_predictions = get_predictions(classifier, concepts, test_data)
+
+# evaluate the predictions
+util.evaluate(train_predictions, training_vectors, test_predictions, test_vectors)

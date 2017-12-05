@@ -179,10 +179,7 @@ for label, concept in concepts.iteritems():
     print "{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership)
 
 # compute evaluation measures 
-print("One error on training data: {0}".format(util.one_error(train_memberships, training_vectors)))
-print("Coverage on training data: {0}".format(util.coverage(train_memberships, training_vectors)))
-print("One error on test data: {0}".format(util.one_error(concept_memberships, test_vectors)))
-print("Coverage on test data: {0}".format(util.coverage(concept_memberships, test_vectors)))
+util.evaluate(train_memberships, training_vectors, concept_memberships, test_vectors)
 
 # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
 
