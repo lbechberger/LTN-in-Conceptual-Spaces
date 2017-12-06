@@ -84,21 +84,32 @@ with open(config["rules_file"], 'r') as f:
                 num_rules += 1
 
 # additional rules: labeled data points need to be classified correctly
-i = 1
+pos_examples = {}
+neg_examples = {}
+for label in config["concepts"]:
+    pos_examples[label] = []
+    neg_examples[label] = []
+
 for labels, vec in config["training_vectors"]:
-    const = ltn.Constant("_".join(map(str, vec)), vec, conceptual_space)
     for label in labels:
         # classify under correct labels
-        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], const)], label="{0}Const".format(label)))
+        pos_examples[label].append(vec)
     
     # don't classify under incorrect label (pick a random one)
     possible_negative_labels = list(set(concepts.keys()) - set(labels))
     negative_label = random.choice(possible_negative_labels)
-    rules.append(ltn.Clause([ltn.Literal(False, concepts[negative_label], const)], label="{0}ConstNot".format(negative_label)))
+    neg_examples[negative_label].append(vec)
+
+for label in config["concepts"]:
     
-    if i % 1000 == 0:
-        print i
-    i += 1
+    # it can happen that we don't have any positive examples; then: don't try to add a rule
+    if len(pos_examples[label]) > 0:
+        pos_const = ltn.Constant(label + "_pos_ex", pos_examples[label], conceptual_space)
+        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], pos_const)], label="{0}Const".format(label), weight = len(pos_examples[label])))
+    
+    if len(neg_examples[label]) > 0:    
+        neg_const = ltn.Constant(label + "_neg_ex", neg_examples[label], conceptual_space)
+        rules.append(ltn.Clause([ltn.Literal(False, concepts[label], neg_const)], label="{0}ConstNot".format(label), weight = len(neg_examples[label])))
     
 
 # all data points in the conceptual space over which we would like to optimize:
@@ -164,8 +175,8 @@ if b_plot and config["num_dimensions"] == 2:
     import matplotlib.pyplot as plt
     
     fig = plt.figure(figsize=(16,10))
-    xs = map(lambda x: x[0], test_data)
-    ys = map(lambda x: x[1], test_data)
+    xs = map(lambda x: x[0], validation_data)
+    ys = map(lambda x: x[1], validation_data)
 
     # figure out how many subplots to create (rows and columns)
     num_concepts = len(concepts)
@@ -182,7 +193,7 @@ if b_plot and config["num_dimensions"] == 2:
     
     # for each concept, create a colored scatter plot of all unlabeled data points
     counter = 1
-    for label, memberships in concept_memberships.iteritems():
+    for label, memberships in validation_memberships.iteritems():
         colors = cm.jet(memberships)
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)
@@ -203,9 +214,9 @@ elif b_plot and config["num_dimensions"] == 3:
     from mpl_toolkits.mplot3d import Axes3D
     
     fig = plt.figure(figsize=(16,10))
-    xs = map(lambda x: x[0], test_data)
-    ys = map(lambda x: x[1], test_data)
-    zs = map(lambda x: x[2], test_data)
+    xs = map(lambda x: x[0], validation_data)
+    ys = map(lambda x: x[1], validation_data)
+    zs = map(lambda x: x[2], validation_data)
 
     # figure out how many subplots to create (rows and columns)
     num_concepts = len(concepts)
@@ -222,7 +233,7 @@ elif b_plot and config["num_dimensions"] == 3:
     
     # for each concept, create a colored scatter plot of all unlabeled data points
     counter = 1
-    for label, memberships in concept_memberships.iteritems():
+    for label, memberships in validation_memberships.iteritems():
         colors = cm.jet(memberships)
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)

@@ -98,8 +98,9 @@ class Domain_slice(Domain):
 class Constant(Domain):
     def __init__(self, label, value=None, domain=None):
         self.label = label
-        if value:
-            self.tensor = tf.constant([value],dtype=tf.float32)
+        if value != None:
+            # change by lbechberger: replace [value] by value --> can hand over an array of data points
+            self.tensor = tf.constant(value,dtype=tf.float32)
             self.parameters = []
             self.columns = len(value)
         else:
