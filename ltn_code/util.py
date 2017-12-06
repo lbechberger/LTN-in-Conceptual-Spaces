@@ -15,7 +15,7 @@ def parse_config_file(config_file_name, config_name):
     config.read(config_file_name)
     
     # general setup
-    result["features_file"] = config.get(config_name, "features_file")
+    result["features_folder"] = config.get(config_name, "features_folder")
     result["concepts_file"] = config.get(config_name, "concepts_file")
     result["rules_file"] = config.get(config_name, "rules_file")
     result["num_dimensions"] = config.getint(config_name, "num_dimensions")
@@ -47,15 +47,17 @@ def parse_config_file(config_file_name, config_name):
     read_ltn_variable("ltn_positive_fact_penalty", is_float = True)
     read_ltn_variable("ltn_norm_of_u", is_float = True)
 
-    train_vecs, test_vecs = parse_features_file(result["features_file"], result["training_percentage"], result["num_dimensions"])
-    result["training_vectors"] = train_vecs
-    result["test_vectors"] = test_vecs
+#    train_vecs, test_vecs = parse_features_file(result["features_file"], result["training_percentage"], result["num_dimensions"])
+#    result["training_vectors"] = train_vecs
+#    result["test_vectors"] = test_vecs
+    for part in ["training", "validation", "test"]:
+        result["{0}_vectors".format(part)] = parse_features_file("{0}{1}.csv".format(result["features_folder"], part), result["num_dimensions"])
 
     result["concepts"] = parse_concepts_file(result["concepts_file"])
 
     return result
 
-def parse_features_file(file_name, training_percentage, n_dims):
+def parse_features_file(file_name, n_dims):
     feature_vectors = []
     with open(file_name, 'r') as f:
         for line in f:
@@ -63,15 +65,27 @@ def parse_features_file(file_name, training_percentage, n_dims):
             vec = map(float, chunks[:n_dims])
             labels = [label for label in chunks[n_dims:] if label != '']
             feature_vectors.append((labels, vec))
-    # shuffle them --> beginning of shuffle list will be treated as labeled, end as unlabeled
-    random.shuffle(feature_vectors)
-
-    # sample training_percentage of the data points as labeled ones
-    cutoff = int(len(feature_vectors) * training_percentage)
-    training_vectors = feature_vectors[:cutoff]
-    test_vectors = feature_vectors[cutoff:]
     
-    return training_vectors, test_vectors
+    return feature_vectors
+
+
+#def parse_features_file(file_name, training_percentage, n_dims):
+#    feature_vectors = []
+#    with open(file_name, 'r') as f:
+#        for line in f:
+#            chunks = line.replace('\n','').replace('\r','').split(",")
+#            vec = map(float, chunks[:n_dims])
+#            labels = [label for label in chunks[n_dims:] if label != '']
+#            feature_vectors.append((labels, vec))
+#    # shuffle them --> beginning of shuffle list will be treated as labeled, end as unlabeled
+#    random.shuffle(feature_vectors)
+#
+#    # sample training_percentage of the data points as labeled ones
+#    cutoff = int(len(feature_vectors) * training_percentage)
+#    training_vectors = feature_vectors[:cutoff]
+#    test_vectors = feature_vectors[cutoff:]
+#    
+#    return training_vectors, test_vectors
 
 def parse_concepts_file(file_name):
     concepts = []
@@ -121,13 +135,13 @@ def coverage(predictions, vectors):
     coverage = (1.0 * summed_depth) / len(vectors)
     return coverage
 
-def evaluate(train_predictions, train_vectors, test_predictions, test_vectors):
-    """Evaluate the predictions both on the training and the test set."""
+def evaluate(train_predictions, train_vectors, validation_predictions, validation_vectors):
+    """Evaluate the predictions both on the training and the validation set."""
     
     # training data (to get an idea about overfitting)
     print("One error on training data: {0}".format(one_error(train_predictions, train_vectors)))
     print("Coverage on training data: {0}".format(coverage(train_predictions, train_vectors)))
     
     # test data (the stuff that matters)
-    print("One error on test data: {0}".format(one_error(test_predictions, test_vectors)))
-    print("Coverage on test data: {0}".format(coverage(test_predictions, test_vectors)))
+    print("One error on validation data: {0}".format(one_error(validation_predictions, validation_vectors)))
+    print("Coverage on validation data: {0}".format(coverage(validation_predictions, validation_vectors)))

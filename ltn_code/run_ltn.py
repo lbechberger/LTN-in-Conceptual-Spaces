@@ -110,6 +110,7 @@ print("program arguments: {0} {1}".format(config_file_name, config_name))
 print("number of concepts: {0}".format(len(concepts.keys())))
 print("number of rules: {0}".format(num_rules))
 print("number of training points: {0}".format(len(config["training_vectors"])))
+print("number of validation points: {0}".format(len(config["validation_vectors"])))
 print("number of test points: {0}".format(len(config["test_vectors"])))
 
 # knowledge base = set of all clauses (all of them should be optimized)
@@ -140,18 +141,18 @@ for i in range(config["max_iter"]):
 #KB.save(sess)  # save the result if needed
 
 # evaluate the results: classify each of the test data points
-test_data = map(lambda x: x[1], config["test_vectors"])
-concept_memberships = {}
-train_memberships = {}
+validation_data = map(lambda x: x[1], config["validation_vectors"])
+validation_memberships = {}
+training_memberships = {}
 for label, concept in concepts.iteritems():
-    concept_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:test_data}))
-    train_memberships[label] = np.squeeze(sess.run(concept.tensor(), feed_dict))
-    max_membership = max(concept_memberships[label])
-    min_membership = min(concept_memberships[label])
+    validation_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:validation_data}))
+    training_memberships[label] = np.squeeze(sess.run(concept.tensor(), feed_dict))
+    max_membership = max(validation_memberships[label])
+    min_membership = min(validation_memberships[label])
     print "{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership)
 
 # compute evaluation measures 
-util.evaluate(train_memberships, config["training_vectors"], concept_memberships, config["test_vectors"])
+util.evaluate(training_memberships, config["training_vectors"], validation_memberships, config["validation_vectors"])
 
 # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
 

@@ -29,7 +29,7 @@ config = util.parse_config_file(config_file_name, config_name)
 training_data = np.array(list(map(lambda x: x[1], config["training_vectors"])))
 training_labels = np.array(list(map(lambda x: np.array(x[0]), config["training_vectors"])))
 training_labels = MultiLabelBinarizer(config["concepts"]).fit_transform(training_labels)
-test_data = np.array(list(map(lambda x: x[1], config["test_vectors"])))
+validation_data = np.array(list(map(lambda x: x[1], config["validation_vectors"])))
 
 # train and use kNN classifier
 classifier = KNeighborsClassifier(num_neighbors)
@@ -48,7 +48,7 @@ def get_predictions(classifier, concepts, data):
     return predictions
 
 train_predictions = get_predictions(classifier, config["concepts"], training_data)
-test_predictions = get_predictions(classifier, config["concepts"], test_data)
+validation_predictions = get_predictions(classifier, config["concepts"], validation_data)
 
 # evaluate the predictions
-util.evaluate(train_predictions, config["training_vectors"], test_predictions, config["test_vectors"])
+util.evaluate(train_predictions, config["training_vectors"], validation_predictions, config["validation_vectors"])
