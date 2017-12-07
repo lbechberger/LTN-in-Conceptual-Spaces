@@ -12,7 +12,9 @@ export PATH="$HOME/miniconda/bin:$PATH"
 conda create -y -q --name tensorflow python=2
 
 source activate tensorflow
-conda install -y -q -c anaconda tensorflow-gpu=1.1.0
+conda install -y -q -c anaconda tensorflow-gpu=1.4.0
+conda install -y -q -c anaconda matplotlib
+conda install -y -q -c anaconda pylab
 source deactivate tensorflow
 
 cd $HOME/miniconda/pkgs

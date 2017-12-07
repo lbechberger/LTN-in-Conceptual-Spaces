@@ -6,7 +6,7 @@ Created on Mon Dec  4 12:19:52 2017
 
 @author: lbechberger
 """
-import ConfigParser, random
+import ConfigParser
 
 def parse_config_file(config_file_name, config_name):
     """Extracts all parameters of interest form the given config file."""
@@ -47,9 +47,6 @@ def parse_config_file(config_file_name, config_name):
     read_ltn_variable("ltn_positive_fact_penalty", is_float = True)
     read_ltn_variable("ltn_norm_of_u", is_float = True)
 
-#    train_vecs, test_vecs = parse_features_file(result["features_file"], result["training_percentage"], result["num_dimensions"])
-#    result["training_vectors"] = train_vecs
-#    result["test_vectors"] = test_vecs
     for part in ["training", "validation", "test"]:
         result["{0}_vectors".format(part)] = parse_features_file("{0}{1}.csv".format(result["features_folder"], part), result["num_dimensions"])
 
@@ -68,24 +65,6 @@ def parse_features_file(file_name, n_dims):
     
     return feature_vectors
 
-
-#def parse_features_file(file_name, training_percentage, n_dims):
-#    feature_vectors = []
-#    with open(file_name, 'r') as f:
-#        for line in f:
-#            chunks = line.replace('\n','').replace('\r','').split(",")
-#            vec = map(float, chunks[:n_dims])
-#            labels = [label for label in chunks[n_dims:] if label != '']
-#            feature_vectors.append((labels, vec))
-#    # shuffle them --> beginning of shuffle list will be treated as labeled, end as unlabeled
-#    random.shuffle(feature_vectors)
-#
-#    # sample training_percentage of the data points as labeled ones
-#    cutoff = int(len(feature_vectors) * training_percentage)
-#    training_vectors = feature_vectors[:cutoff]
-#    test_vectors = feature_vectors[cutoff:]
-#    
-#    return training_vectors, test_vectors
 
 def parse_concepts_file(file_name):
     concepts = []
