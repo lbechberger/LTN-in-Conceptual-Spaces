@@ -19,7 +19,6 @@ def parse_config_file(config_file_name, config_name):
     result["concepts_file"] = config.get(config_name, "concepts_file")
     result["rules_file"] = config.get(config_name, "rules_file")
     result["num_dimensions"] = config.getint(config_name, "num_dimensions")
-    result["training_percentage"] = config.getfloat(config_name, "training_percentage")
     result["max_iter"] = config.getint(config_name, "max_iter")
     
     # LTN setup
