@@ -2,15 +2,16 @@ __author__ = 'luciano'
 import tensorflow as tf
 import numpy as np
 
-default_layers = 5
-default_smooth_factor = 0.0000001
-default_tnorm = "product"
-default_optimizer = "gd"
-default_aggregator = "min"
-default_positive_fact_penality = 1e-6
-default_clauses_aggregator = "min"
-default_norm_of_u = 5.0
-
+default_layers = 5                      # number of receptive fields per predicate
+default_smooth_factor = 1e-7            # factor to which large weights are penalized
+default_tnorm = "product"               # appropriate t-conorm is used to compute disjunction of literals within clauses; 'product', 'yager2', 'luk', 'goedel'
+default_aggregator = "min"              # aggregation across data points when computing validity of a clause; 'product', 'mean', 'gmean', 'hmean', 'min'
+default_clauses_aggregator = "min"      # aggregate over clauses to define overall satisfiability of KB; 'min', 'mean', 'hmean', 'wmean'
+default_optimizer = "gd"                # optimizing algorithm to use; 'ftrl', 'gd', 'ada', 'rmsprop'
+default_positive_fact_penality = 1e-6   # penalty for predicates that are true everywhere
+default_norm_of_u = 5.0                 # initialization of the u vector (determining how close to 0 and 1 the membership values can get)
+default_type = "onlyW"                  # default type of membership function to use; 'onlyW', 'rbfDistribution', 'rbfDistance'
+default_epsilon = 1e-4                  # smoothing parameter for covariance matrix of 'rbf' type
 
 def train_op(loss, optimization_algorithm):
     if optimization_algorithm == "ftrl":
@@ -153,7 +154,7 @@ class Term(Domain):
         self.tensor = self.function.tensor(self.domain)
 
 class Predicate:
-    def __init__(self, label, domain, layers= None, max_min=0.0):
+    def __init__(self, label, domain, layers= None, max_min=0.0, ltn_type = None):
         self.label = label
         self.max_min = max_min
         self.domain = domain
@@ -163,26 +164,74 @@ class Predicate:
             self.number_of_layers = default_layers
         else:
             self.number_of_layers = layers
-        self.W = tf.matrix_band_part(tf.Variable(tf.random_normal([self.number_of_layers,
-                                              self.domain.columns+1,
-                                              self.domain.columns+1],stddev=0.5)),0,-1 ,
-                             name = "W"+label)  # upper triangualr matrix
-        # modification by lbechberger: instead of using tf.ones, use tf.constant() to make sure that norm of u is ~5
-        # (which in turn ensures that the membership function can reach values close to 0 and 1)
-        self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
-#        self.u = tf.Variable(tf.ones([layers,1]),
-#                             name = "u"+label)
-        self.parameters = [self.W]
+
+        # modification by lbechberger: take care of different ltn types (i.e., different membership functions)            
+        if ltn_type == None:
+            self.ltn_type = default_type
+        else:
+            self.ltn_type = ltn_type
+        
+        if self.ltn_type == "onlyW":
+            self.W = tf.matrix_band_part(tf.Variable(tf.random_normal([self.number_of_layers,
+                                                  self.domain.columns+1,
+                                                  self.domain.columns+1],stddev=0.5)),0,-1 ,
+                                 name = "W"+label)  # upper triangualr matrix
+            # modification by lbechberger: instead of using tf.ones, use tf.constant() to make sure that norm of u is ~5
+            # (which in turn ensures that the membership function can reach values close to 0 and 1)
+            self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
+            self.parameters = [self.W]
+        elif self.ltn_type == "rbfDistribution":
+            # mu is the center of the receptive field, W is the basis for the covariance matrix
+            self.W = tf.Variable(tf.eye(self.domain.columns, batch_shape=[self.number_of_layers]), name = "W"+label)
+            self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
+            self.u = tf.Variable(tf.ones(shape=[self.number_of_layers,1]), name = "u"+label)
+            self.parameters = [self.W]
+        elif self.ltn_type == "rbfDistance":
+            # W contains a weight for each dimension
+            self.W = tf.Variable(tf.constant(1.0/self.domain.columns, shape=[self.number_of_layers, self.domain.columns]), name = "W"+label)
+            self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
+            self.parameters = [self.W]
+            pass
+        else:
+            raise Exception("Unknown LTN type - cannot construct predicate")
 
     def tensor(self,domain=None):
         if domain is None:
             domain = self.domain
-        X = tf.concat([tf.ones((tf.shape(domain.tensor)[0],1)),
-                                           domain.tensor],1)
-        XW = tf.matmul(tf.tile(tf.expand_dims(X, 0), [self.number_of_layers, 1, 1]), self.W)
-        XWX = tf.squeeze(tf.matmul(tf.expand_dims(X, 1), tf.transpose(XW, [1, 2, 0])),squeeze_dims=[1])
-        gX = tf.matmul(tf.tanh(XWX),self.u)
-        result = tf.sigmoid(gX,name=self.label+"_at_"+domain.label)
+        
+        # modification by lbechberger: take care of different ltn types (i.e., different membership functions)            
+        if self.ltn_type == "onlyW":
+            X = tf.concat([tf.ones((tf.shape(domain.tensor)[0],1)),
+                                               domain.tensor],1)
+            XW = tf.matmul(tf.tile(tf.expand_dims(X, 0), [self.number_of_layers, 1, 1]), self.W)
+            XWX = tf.squeeze(tf.matmul(tf.expand_dims(X, 1), tf.transpose(XW, [1, 2, 0])),squeeze_dims=[1])
+            gX = tf.matmul(tf.tanh(XWX),self.u)
+            result = tf.sigmoid(gX,name=self.label+"_at_"+domain.label)
+        elif self.ltn_type == "rbfDistribution":
+            # compute covariance as WW' + eps*I (try to ensure positive definiteness)
+            scaled_eye = tf.multiply(tf.eye(self.domain.columns), tf.constant(default_epsilon, shape=self.W.shape))
+            clipped_W = tf.clip_by_value(self.W, default_epsilon, float("inf"))
+            covariance = tf.add(tf.matmul(clipped_W, clipped_W, transpose_b = True), scaled_eye)
+            # multivariate normal distribution with mu and covariance; normalize pdf by prob(mu)            
+            dist = tf.contrib.distributions.MultivariateNormalFullCovariance(self.mu, covariance)
+            height = dist.prob(self.mu)
+            X = tf.expand_dims(domain.tensor, 1)
+            rbf = tf.multiply(dist.prob(X), tf.reciprocal(height))
+            # take a linear combination of the different receptive fields based on u
+            result = tf.matmul(rbf, tf.multiply(self.u, tf.reciprocal(tf.reduce_sum(self.u, 1, keep_dims=True))))
+        elif self.ltn_type == "rbfDistance":
+            # compute weighted distance to prototype
+            X = tf.expand_dims(domain.tensor, 1)
+            difference = tf.abs(tf.subtract(self.mu, X))
+            normalized_weights = tf.multiply(self.W, tf.reciprocal(tf.reduce_sum(self.W, 1, keep_dims=True)))
+            weighted_difference = tf.multiply(normalized_weights, difference)
+            distance = tf.reduce_sum(weighted_difference, 1)
+            membership = tf.exp(-distance)
+            # aggregate as max over all receptive fields (todo: also use weighted sum?)
+            result = tf.reduce_max(membership, keep_dims = True)
+        else:
+            raise Exception("Unknown LTN type - cannot compute membership")
+        
         if self.max_min == 0.0:
             return result
         if self.max_min > 0.0:

@@ -45,6 +45,7 @@ def parse_config_file(config_file_name, config_name):
     read_ltn_variable("ltn_clauses_aggregator")
     read_ltn_variable("ltn_positive_fact_penalty", is_float = True)
     read_ltn_variable("ltn_norm_of_u", is_float = True)
+    read_ltn_variable("ltn_epsilon", is_float = True)
 
     for part in ["training", "validation", "test"]:
         result["{0}_vectors".format(part)] = parse_features_file("{0}{1}.csv".format(result["features_folder"], part), result["num_dimensions"])

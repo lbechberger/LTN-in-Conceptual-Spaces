@@ -7,11 +7,9 @@ Created on Mon Oct 30 2017
 
 import tensorflow as tf
 import logictensornetworks as ltn
-
-import sys, re, random
-
 import numpy as np
 
+import re, random, argparse
 from math import sqrt
 
 import util
@@ -20,18 +18,18 @@ import util
 random.seed(42)
 
 # parse command line arguments
-if len(sys.argv) < 3:
-    raise Exception("Need two arguments: 'python run_ltn.py config.cfg config_name'")
-config_file_name = sys.argv[1]
-config_name = sys.argv[2]
+parser = argparse.ArgumentParser(description='LTN in CS')
+parser.add_argument('-t', '--type', default = 'onlyW',
+                    help = 'the type of LTN membership function to use')
+parser.add_argument('-p', '--plot', action="store_true",
+                    help = 'plot the resulting concepts if space is 2D or 3D')
+parser.add_argument('config_file', help = 'the config file to use')
+parser.add_argument('config_name', help = 'the name of the configuration')
+args = parser.parse_args()
 
-if len(sys.argv) > 3 and sys.argv[3] == '-p':
-    b_plot = True
-else:
-    b_plot = False
-
-# read config file and set up LTN parameters
-config = util.parse_config_file(config_file_name, config_name)
+# parse the config file and set the LTN membership function type
+config = util.parse_config_file(args.config_file, args.config_name)
+ltn.default_type = args.type
 
 def set_ltn_variable(config, name, default):
     if name in config:
@@ -47,6 +45,7 @@ ltn.default_optimizer               = set_ltn_variable(config, "ltn_optimizer", 
 ltn.default_clauses_aggregator      = set_ltn_variable(config, "ltn_clauses_aggregator", ltn.default_clauses_aggregator)
 ltn.default_positive_fact_penality  = set_ltn_variable(config, "ltn_positive_fact_penalty", ltn.default_positive_fact_penality)
 ltn.default_norm_of_u               = set_ltn_variable(config, "ltn_norm_of_u", ltn.default_norm_of_u)
+ltn.default_epsilon                 = set_ltn_variable(config, "ltn_epsilon", ltn.default_epsilon)
 
 # create conceptual space
 conceptual_space = ltn.Domain(config["num_dimensions"], label="ConceptualSpace")
@@ -117,7 +116,7 @@ data = map(lambda x: x[1], config["training_vectors"])
 feed_dict = { conceptual_space.tensor : data }
 
 # print out some diagnostic information
-print("program arguments: {0} {1}".format(config_file_name, config_name))
+print("program arguments: {0}".format(args))
 print("number of concepts: {0}".format(len(concepts.keys())))
 print("number of rules: {0}".format(num_rules))
 print("number of training points: {0}".format(len(config["training_vectors"])))
@@ -168,7 +167,7 @@ util.evaluate(training_memberships, config["training_vectors"], validation_membe
 # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
 
 # visualize the results for 2D and 3D data
-if b_plot and config["num_dimensions"] == 2:
+if args.plot and config["num_dimensions"] == 2:
     from pylab import cm
     import matplotlib
     matplotlib.use('TkAgg')
@@ -206,7 +205,7 @@ if b_plot and config["num_dimensions"] == 2:
     plt.show()
 
 
-elif b_plot and config["num_dimensions"] == 3:
+elif args.plot and config["num_dimensions"] == 3:
     from pylab import cm
     import matplotlib
     matplotlib.use('TkAgg')
