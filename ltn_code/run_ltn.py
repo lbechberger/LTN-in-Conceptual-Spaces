@@ -19,7 +19,7 @@ random.seed(42)
 
 # parse command line arguments
 parser = argparse.ArgumentParser(description='LTN in CS')
-parser.add_argument('-t', '--type', default = 'onlyW',
+parser.add_argument('-t', '--type', default = 'original',
                     help = 'the type of LTN membership function to use')
 parser.add_argument('-p', '--plot', action="store_true",
                     help = 'plot the resulting concepts if space is 2D or 3D')
@@ -50,15 +50,42 @@ ltn.default_epsilon                 = set_ltn_variable(config, "ltn_epsilon", lt
 # create conceptual space
 conceptual_space = ltn.Domain(config["num_dimensions"], label="ConceptualSpace")
 
-# create concepts as predicates
-concepts = {}
-for label in config["concepts"]:       
-    concept = ltn.Predicate(label, conceptual_space)
-    concepts[label] = concept
+# prepare classification rules: labeled data points need to be classified correctly
+pos_examples = {}
+neg_examples = {}
+for label in config["concepts"]:
+    pos_examples[label] = []
+    neg_examples[label] = []
 
+for labels, vec in config["training_vectors"]:
+    for label in labels:
+        # classify under correct labels
+        pos_examples[label].append(vec)
+    
+    # don't classify under incorrect label (pick a random one)
+    possible_negative_labels = list(set(config["concepts"]) - set(labels))
+    negative_label = random.choice(possible_negative_labels)
+    neg_examples[negative_label].append(vec)
+
+
+# create concepts as predicates and create classification rules
+concepts = {}
+rules = []
+for label in config["concepts"]:
+    
+    concepts[label] = ltn.Predicate(label, conceptual_space, data_points = pos_examples[label])
+
+    # it can happen that we don't have any positive examples; then: don't try to add a rule
+    if len(pos_examples[label]) > 0:
+        pos_const = ltn.Constant(label + "_pos_ex", pos_examples[label], conceptual_space)
+        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], pos_const)], label="{0}Const".format(label), weight = len(pos_examples[label])))
+    
+    if len(neg_examples[label]) > 0:    
+        neg_const = ltn.Constant(label + "_neg_ex", neg_examples[label], conceptual_space)
+        rules.append(ltn.Clause([ltn.Literal(False, concepts[label], neg_const)], label="{0}ConstNot".format(label), weight = len(neg_examples[label])))
+ 
 
 # parse rules file
-rules = []
 num_rules = 0
 implication_rule = re.compile("(\w+) IMPLIES (\w+)")
 different_concepts_rule = re.compile("(\w+) DIFFERENT (\w+)")
@@ -81,35 +108,7 @@ with open(config["rules_file"], 'r') as f:
                 rules.append(ltn.Clause([ltn.Literal(False, concepts[left], conceptual_space), 
                                      ltn.Literal(False, concepts[right], conceptual_space)], label = "{0}DC{1}".format(left, right)))
                 num_rules += 1
-
-# additional rules: labeled data points need to be classified correctly
-pos_examples = {}
-neg_examples = {}
-for label in config["concepts"]:
-    pos_examples[label] = []
-    neg_examples[label] = []
-
-for labels, vec in config["training_vectors"]:
-    for label in labels:
-        # classify under correct labels
-        pos_examples[label].append(vec)
-    
-    # don't classify under incorrect label (pick a random one)
-    possible_negative_labels = list(set(concepts.keys()) - set(labels))
-    negative_label = random.choice(possible_negative_labels)
-    neg_examples[negative_label].append(vec)
-
-for label in config["concepts"]:
-    
-    # it can happen that we don't have any positive examples; then: don't try to add a rule
-    if len(pos_examples[label]) > 0:
-        pos_const = ltn.Constant(label + "_pos_ex", pos_examples[label], conceptual_space)
-        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], pos_const)], label="{0}Const".format(label), weight = len(pos_examples[label])))
-    
-    if len(neg_examples[label]) > 0:    
-        neg_const = ltn.Constant(label + "_neg_ex", neg_examples[label], conceptual_space)
-        rules.append(ltn.Clause([ltn.Literal(False, concepts[label], neg_const)], label="{0}ConstNot".format(label), weight = len(neg_examples[label])))
-    
+   
 
 # all data points in the conceptual space over which we would like to optimize:
 data = map(lambda x: x[1], config["training_vectors"])
@@ -156,6 +155,8 @@ validation_memberships = {}
 training_memberships = {}
 for label, concept in concepts.iteritems():
     validation_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:validation_data}))
+#    print validation_memberships[label]
+#    print validation_data
     training_memberships[label] = np.squeeze(sess.run(concept.tensor(), feed_dict))
     max_membership = max(validation_memberships[label])
     min_membership = min(validation_memberships[label])

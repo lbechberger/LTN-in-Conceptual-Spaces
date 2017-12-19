@@ -10,7 +10,7 @@ default_clauses_aggregator = "min"      # aggregate over clauses to define overa
 default_optimizer = "gd"                # optimizing algorithm to use; 'ftrl', 'gd', 'ada', 'rmsprop'
 default_positive_fact_penality = 1e-6   # penalty for predicates that are true everywhere
 default_norm_of_u = 5.0                 # initialization of the u vector (determining how close to 0 and 1 the membership values can get)
-default_type = "onlyW"                  # default type of membership function to use; 'onlyW', 'rbfDistribution', 'rbfDistance'
+default_type = "original"               # default type of membership function to use; 'original', 'rbfDistribution', 'rbfDistance'
 default_epsilon = 1e-4                  # smoothing parameter for covariance matrix of 'rbf' type
 
 def train_op(loss, optimization_algorithm):
@@ -154,7 +154,7 @@ class Term(Domain):
         self.tensor = self.function.tensor(self.domain)
 
 class Predicate:
-    def __init__(self, label, domain, layers= None, max_min=0.0, ltn_type = None):
+    def __init__(self, label, domain, layers= None, max_min=0.0, ltn_type = None, data_points = None):
         self.label = label
         self.max_min = max_min
         self.domain = domain
@@ -171,7 +171,7 @@ class Predicate:
         else:
             self.ltn_type = ltn_type
         
-        if self.ltn_type == "onlyW":
+        if self.ltn_type == "original":
             self.W = tf.matrix_band_part(tf.Variable(tf.random_normal([self.number_of_layers,
                                                   self.domain.columns+1,
                                                   self.domain.columns+1],stddev=0.5)),0,-1 ,
@@ -182,16 +182,26 @@ class Predicate:
             self.parameters = [self.W]
         elif self.ltn_type == "rbfDistribution":
             # mu is the center of the receptive field, W is the basis for the covariance matrix
-            self.W = tf.Variable(tf.eye(self.domain.columns, batch_shape=[self.number_of_layers]), name = "W"+label)
-            self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
+            if data_points == None:
+                self.W = tf.Variable(tf.eye(self.domain.columns, batch_shape=[self.number_of_layers]), name = "W"+label)
+                self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
+            else:
+                # make initial guess based on some data points
+                self.mu = tf.Variable(tf.expand_dims(tf.reduce_mean(data_points, 0), 1))
+                self.W = tf.Variable(tf.eye(self.domain.columns, batch_shape=[self.number_of_layers]), name = "W"+label)
             self.u = tf.Variable(tf.ones(shape=[self.number_of_layers,1]), name = "u"+label)
             self.parameters = [self.W]
         elif self.ltn_type == "rbfDistance":
             # W contains a weight for each dimension
-            self.W = tf.Variable(tf.constant(1.0/self.domain.columns, shape=[self.number_of_layers, self.domain.columns]), name = "W"+label)
-            self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
+            if data_points == None:
+                self.W = tf.Variable(tf.constant(1.0/self.domain.columns, shape=[self.number_of_layers, self.domain.columns]), name = "W"+label)
+                self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
+            else:
+                # make initial guess based on some data points
+                self.mu = tf.Variable(tf.expand_dims(tf.reduce_mean(data_points, 0), 1))
+                self.W = tf.Variable(tf.constant(1.0/self.domain.columns, shape=[self.number_of_layers, self.domain.columns]), name = "W"+label)
+            self.u = tf.Variable(tf.ones(shape=[self.number_of_layers,1]), name = "u"+label)
             self.parameters = [self.W]
-            pass
         else:
             raise Exception("Unknown LTN type - cannot construct predicate")
 
@@ -200,9 +210,8 @@ class Predicate:
             domain = self.domain
         
         # modification by lbechberger: take care of different ltn types (i.e., different membership functions)            
-        if self.ltn_type == "onlyW":
-            X = tf.concat([tf.ones((tf.shape(domain.tensor)[0],1)),
-                                               domain.tensor],1)
+        if self.ltn_type == "original":
+            X = tf.concat([tf.ones((tf.shape(domain.tensor)[0],1)), domain.tensor],1)
             XW = tf.matmul(tf.tile(tf.expand_dims(X, 0), [self.number_of_layers, 1, 1]), self.W)
             XWX = tf.squeeze(tf.matmul(tf.expand_dims(X, 1), tf.transpose(XW, [1, 2, 0])),squeeze_dims=[1])
             gX = tf.matmul(tf.tanh(XWX),self.u)
@@ -210,8 +219,7 @@ class Predicate:
         elif self.ltn_type == "rbfDistribution":
             # compute covariance as WW' + eps*I (try to ensure positive definiteness)
             scaled_eye = tf.multiply(tf.eye(self.domain.columns), tf.constant(default_epsilon, shape=self.W.shape))
-            clipped_W = tf.clip_by_value(self.W, default_epsilon, float("inf"))
-            covariance = tf.add(tf.matmul(clipped_W, clipped_W, transpose_b = True), scaled_eye)
+            covariance = tf.add(tf.matmul(self.W, self.W, transpose_b = True), scaled_eye)
             # multivariate normal distribution with mu and covariance; normalize pdf by prob(mu)            
             dist = tf.contrib.distributions.MultivariateNormalFullCovariance(self.mu, covariance)
             height = dist.prob(self.mu)
@@ -228,7 +236,8 @@ class Predicate:
             distance = tf.reduce_sum(weighted_difference, 1)
             membership = tf.exp(-distance)
             # aggregate as max over all receptive fields (todo: also use weighted sum?)
-            result = tf.reduce_max(membership, keep_dims = True)
+            #result = tf.reduce_max(membership, keep_dims = True)
+            result = tf.matmul(membership, tf.multiply(self.u, tf.reciprocal(tf.reduce_sum(self.u, 1, keep_dims=True))))
         else:
             raise Exception("Unknown LTN type - cannot compute membership")
         
@@ -336,8 +345,7 @@ class KnowledgeBase:
 
     def penalize_positive_facts(self):
         tensor_for_positive_facts = [tf.reduce_sum(Literal(True,lit.predicate,lit.domain).tensor,keep_dims=True) for cl in self.clauses for lit in cl.literals]
-        # change by lbechberger        
-        return tf.reduce_sum(tensor_for_positive_facts,0)
+        return tf.reduce_sum(tf.concat(tensor_for_positive_facts,0))
 
     def save(self,sess, version = ""):
         save_path = self.saver.save(sess,self.save_path+self.label+version+".ckpt")
