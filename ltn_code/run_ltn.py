@@ -71,19 +71,21 @@ for labels, vec in config["training_vectors"]:
 # create concepts as predicates and create classification rules
 concepts = {}
 rules = []
+feed_dict = {}
 for label in config["concepts"]:
     
     concepts[label] = ltn.Predicate(label, conceptual_space, data_points = pos_examples[label])
 
     # it can happen that we don't have any positive examples; then: don't try to add a rule
     if len(pos_examples[label]) > 0:
-        pos_const = ltn.Constant(label + "_pos_ex", pos_examples[label], conceptual_space)
-        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], pos_const)], label="{0}Const".format(label), weight = len(pos_examples[label])))
-    
+        pos_domain = ltn.Domain(conceptual_space.columns, label = label + "_pos_ex")
+        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], pos_domain)], label="{0}Const".format(label), weight = len(pos_examples[label])))
+        feed_dict[pos_domain.tensor] = pos_examples[label]
+        
     if len(neg_examples[label]) > 0:    
-        neg_const = ltn.Constant(label + "_neg_ex", neg_examples[label], conceptual_space)
-        rules.append(ltn.Clause([ltn.Literal(False, concepts[label], neg_const)], label="{0}ConstNot".format(label), weight = len(neg_examples[label])))
- 
+        neg_domain = ltn.Domain(conceptual_space.columns, label = label + "_neg_ex")
+        rules.append(ltn.Clause([ltn.Literal(False, concepts[label], neg_domain)], label="{0}ConstNot".format(label), weight = len(neg_examples[label])))
+        feed_dict[neg_domain.tensor] = neg_examples[label]
 
 # parse rules file
 num_rules = 0
@@ -112,7 +114,7 @@ with open(config["rules_file"], 'r') as f:
 
 # all data points in the conceptual space over which we would like to optimize:
 data = map(lambda x: x[1], config["training_vectors"])
-feed_dict = { conceptual_space.tensor : data }
+feed_dict[conceptual_space.tensor] = data
 
 # print out some diagnostic information
 print("program arguments: {0}".format(args))
