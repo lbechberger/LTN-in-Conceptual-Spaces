@@ -10,7 +10,7 @@ default_clauses_aggregator = "min"      # aggregate over clauses to define overa
 default_optimizer = "gd"                # optimizing algorithm to use; 'ftrl', 'gd', 'ada', 'rmsprop'
 default_positive_fact_penality = 1e-6   # penalty for predicates that are true everywhere
 default_norm_of_u = 5.0                 # initialization of the u vector (determining how close to 0 and 1 the membership values can get)
-default_type = "original"               # default type of membership function to use; 'original', 'rbfDistribution', 'rbfDistance'
+default_type = "original"               # default type of membership function to use; 'original', 'rbfDistribution', 'rbfDistance', 'linear'
 default_epsilon = 1e-4                  # smoothing parameter for covariance matrix of 'rbf' type
 
 def train_op(loss, optimization_algorithm):
@@ -201,6 +201,12 @@ class Predicate:
                 self.W = tf.Variable(tf.constant(1.0/self.domain.columns, shape=[self.number_of_layers, self.domain.columns]), name = "W"+label)
             self.u = tf.Variable(tf.ones(shape=[self.number_of_layers,1]), name = "u"+label)
             self.parameters = [self.W]
+        elif self.ltn_type == "linear":
+            # use only a linear model
+            self.V = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "V"+label)
+            self.b = tf.Variable(tf.random_normal([1,self.number_of_layers]), name = "b"+label)
+            self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
+            self.parameters = [self.V, self.b]        
         else:
             raise Exception("Unknown LTN type - cannot construct predicate")
 
@@ -237,6 +243,11 @@ class Predicate:
             # aggregate as max over all receptive fields (todo: also use weighted sum?)
             #result = tf.reduce_max(membership, keep_dims = True)
             result = tf.matmul(membership, tf.multiply(self.u, tf.reciprocal(tf.reduce_sum(self.u, 1, keep_dims=True))))
+        elif self.ltn_type == "linear":
+            X = domain.tensor
+            XV = tf.matmul(X, tf.transpose(self.V))
+            gX = tf.matmul(tf.tanh(XV + self.b),self.u)
+            result = tf.sigmoid(gX)
         else:
             raise Exception("Unknown LTN type - cannot compute membership")
         
