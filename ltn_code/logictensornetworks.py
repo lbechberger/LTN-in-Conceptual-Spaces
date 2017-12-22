@@ -10,7 +10,7 @@ default_clauses_aggregator = "min"      # aggregate over clauses to define overa
 default_optimizer = "gd"                # optimizing algorithm to use; 'ftrl', 'gd', 'ada', 'rmsprop'
 default_positive_fact_penality = 1e-6   # penalty for predicates that are true everywhere
 default_norm_of_u = 5.0                 # initialization of the u vector (determining how close to 0 and 1 the membership values can get)
-default_type = "original"               # default type of membership function to use; 'original', 'rbfDistribution', 'rbfDistance', 'linear'
+default_type = "original"               # default type of membership function to use; 'original', 'rbfDistribution', 'rbfDistance', 'linear', 'cuboid'
 default_epsilon = 1e-4                  # smoothing parameter for covariance matrix of 'rbf' type
 
 def train_op(loss, optimization_algorithm):
@@ -29,7 +29,7 @@ def PR(tensor):
     result = tf.Print(tensor,[tf.shape(tensor),tensor.name,tensor],summarize=20)
     return result
 
-def disjunction_of_literals(literals,label="no_label"):
+def apply_t_norm(literals, label="no_label"):
     list_of_literal_tensors = [lit.tensor for lit in literals]
     literals_tensor = tf.concat(list_of_literal_tensors,1)
     if default_tnorm == "product":
@@ -40,6 +40,10 @@ def disjunction_of_literals(literals,label="no_label"):
         result = tf.minimum(1.0,tf.reduce_sum(literals_tensor,1, keep_dims=True))
     if default_tnorm == "goedel":
         result = tf.reduce_max(literals_tensor,1,keep_dims=True,name=label)
+    return result
+
+def disjunction_of_literals(literals,label="no_label"):
+    result = apply_t_norm(literals, label)
     if default_aggregator == "product":
         return tf.reduce_prod(result,keep_dims=True,name=label)
     if default_aggregator == "mean":
@@ -53,6 +57,7 @@ def disjunction_of_literals(literals,label="no_label"):
         return tf.reduce_min(result, keep_dims=True,name=label)
 
 def smooth(parameters):
+    
     norm_of_omega = tf.reduce_sum(tf.expand_dims(tf.concat(
                      [tf.expand_dims(tf.reduce_sum(tf.square(par)),0) for par in parameters],0),1))
     return tf.multiply(default_smooth_factor,norm_of_omega)
@@ -97,7 +102,7 @@ class Domain_slice(Domain):
         self.tensor = domain.tensor[:,begin_column:end_column]
 
 class Constant(Domain):
-    def __init__(self, label, value=None, domain=None):
+    def __init__(self, label, value=None, domain=None, init_with=None):
         self.label = label
         if value != None:
             self.tensor = tf.constant([value],dtype=tf.float32)
@@ -105,7 +110,10 @@ class Constant(Domain):
             self.columns = len(value)
         else:
             self.columns = domain.columns
-            self.tensor = tf.Variable(tf.random_normal([1, domain.columns], mean=1),name="label")
+            if init_with is not None:
+                self.tensor = tf.Variable(tf.expand_dims(np.array(init_with, dtype="float32"),0), name=label)
+            else:
+                self.tensor = tf.Variable(tf.random_normal([1, domain.columns], mean=1),name=label)
             self.parameters = []
 
 
@@ -152,8 +160,55 @@ class Term(Domain):
         self.columns = function.columns
         self.tensor = self.function.tensor(self.domain)
 
+class CompositePredicate:
+    def __init__(self, label, domain, layers = None, ltn_type = None):
+        self.label = label
+        self.domain = domain
+        if layers == None:
+            self.number_of_layers = default_layers
+        else:
+            self.number_of_layers = layers
+        
+        if ltn_type == None:
+            self.ltn_type = default_type
+        else:
+            self.ltn_type = ltn_type
+            
+        self.predicates = []
+        self.parameters = []
+        for i in range(self.number_of_layers):
+            pred = Predicate("{0}_{1}".format(label, i), self.domain, layers = 1, ltn_type = self.ltn_type)
+            self.predicates.append(pred)
+            self.parameters += pred.parameters
+        print self.predicates
+        
+    def tensor(self, domain = None):
+        if domain is None:
+            domain = self.domain
+        return self.predicates[0].tensor(domain) 
+        #return tf.reduce_max(tf.concat([p.tensor() for p in self.predicates], 0), keep_dims = True)
+        #return Clause([Literal(True, pred, domain) for pred in self.predicates], label="clause"+self.label)
+        list_of_pred_tensors = [p.tensor(self.domain) for p in self.predicates]
+        literals_tensor = tf.concat(list_of_pred_tensors,1)
+        if default_tnorm == "product":
+            result = 1.0-tf.reduce_prod(1.0-literals_tensor,1,keep_dims=True)
+        if default_tnorm=="yager2":
+            result = tf.minimum(1.0,tf.sqrt(tf.reduce_sum(tf.square(literals_tensor),1, keep_dims=True)))
+        if default_tnorm=="luk":
+            result = tf.minimum(1.0,tf.reduce_sum(literals_tensor,1, keep_dims=True))
+        if default_tnorm == "goedel":
+            result = tf.reduce_max(literals_tensor,1,keep_dims=True,name=self.label)   
+        return result
+        
+    def constraints(self):
+        point = Constant(label = self.label + "_prototype", domain = self.domain)
+        clauses = []
+        for pred in self.predicates:
+            clauses.append(Clause([Literal(True, pred, point)]))
+        return clauses
+
 class Predicate:
-    def __init__(self, label, domain, layers= None, max_min=0.0, ltn_type = None, data_points = None):
+    def __init__(self, label, domain, layers = None, max_min = 0.0, ltn_type = None, data_points = None):
         self.label = label
         self.max_min = max_min
         self.domain = domain
@@ -179,6 +234,7 @@ class Predicate:
             # (which in turn ensures that the membership function can reach values close to 0 and 1)
             self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
             self.parameters = [self.W]
+            
         elif self.ltn_type == "rbfDistribution":
             # mu is the center of the receptive field, W is the basis for the covariance matrix
             if data_points == None:
@@ -190,6 +246,7 @@ class Predicate:
                 self.W = tf.Variable(tf.eye(self.domain.columns, batch_shape=[self.number_of_layers]), name = "W"+label)
             self.u = tf.Variable(tf.ones(shape=[self.number_of_layers,1]), name = "u"+label)
             self.parameters = [self.W]
+            
         elif self.ltn_type == "rbfDistance":
             # W contains a weight for each dimension
             if data_points == None:
@@ -201,12 +258,30 @@ class Predicate:
                 self.W = tf.Variable(tf.constant(1.0/self.domain.columns, shape=[self.number_of_layers, self.domain.columns]), name = "W"+label)
             self.u = tf.Variable(tf.ones(shape=[self.number_of_layers,1]), name = "u"+label)
             self.parameters = [self.W]
+            
         elif self.ltn_type == "linear":
             # use only a linear model
             self.V = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "V"+label)
             self.b = tf.Variable(tf.random_normal([1,self.number_of_layers]), name = "b"+label)
             self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
-            self.parameters = [self.V, self.b]        
+            self.parameters = [self.V, self.b]   
+            
+        elif self.ltn_type == "cuboid":
+            # use a single cuboid
+#            if data_points == None:
+#                self.p_min = tf.Variable(tf.random_normal([1,self.domain.columns]), name = "p_min_" + label)
+#            else:
+#                self.p_min = tf.Variable(tf.expand_dims(tf.reduce_mean(data_points, axis=0), 1))
+#            self.point_1 = tf.Variable(tf.add(tf.reduce_min(data_points, axis=0, keep_dims=True), tf.random_normal(shape=[1,self.domain.columns], stddev=0.05)), name = self.label + "p_1")#tf.random_normal([1,self.domain.columns]))            
+#            self.point_2 = tf.Variable(tf.add(tf.reduce_max(data_points, axis=0, keep_dims=True), tf.random_normal(shape=[1,self.domain.columns], stddev=0.05)), name = self.label + "p_2")#tf.Variable(tf.random_normal([1,self.domain.columns]))
+            self.point_1 = tf.Variable(tf.add(tf.reduce_mean(data_points, axis=0, keep_dims=True), tf.random_normal(shape=[1,self.domain.columns], stddev=0.15)))#tf.random_normal([1,self.domain.columns]))            
+            self.point_2 = tf.Variable(tf.add(tf.reduce_mean(data_points, axis=0, keep_dims=True), tf.random_normal(shape=[1,self.domain.columns], stddev=0.15)))#tf.Variable(tf.random_normal([1,self.domain.columns]))
+            self.p_min = tf.minimum(self.point_1, self.point_2)
+            self.p_max = tf.maximum(self.point_1, self.point_2)
+            self.c = tf.abs(tf.Variable(tf.constant(10.0, shape=[1])))
+            #self.weights = tf.abs(tf.Variable(tf.ones(shape=[self.domain.columns]), name = "W"+label))
+            self.parameters = [tf.abs(tf.subtract(self.point_1, self.point_2))]
+            
         else:
             raise Exception("Unknown LTN type - cannot construct predicate")
 
@@ -221,6 +296,7 @@ class Predicate:
             XWX = tf.squeeze(tf.matmul(tf.expand_dims(X, 1), tf.transpose(XW, [1, 2, 0])),squeeze_dims=[1])
             gX = tf.matmul(tf.tanh(XWX),self.u)
             result = tf.sigmoid(gX,name=self.label+"_at_"+domain.label)
+            
         elif self.ltn_type == "rbfDistribution":
             # compute covariance as WW' + eps*I (try to ensure positive definiteness)
             scaled_eye = tf.multiply(tf.eye(self.domain.columns), tf.constant(default_epsilon, shape=self.W.shape))
@@ -232,9 +308,10 @@ class Predicate:
             rbf = tf.multiply(dist.prob(X), tf.reciprocal(height))
             # take a linear combination of the different receptive fields based on u
             result = tf.matmul(rbf, tf.multiply(self.u, tf.reciprocal(tf.reduce_sum(self.u, 1, keep_dims=True))))
+            
         elif self.ltn_type == "rbfDistance":
             # compute weighted distance to prototype
-            X = tf.expand_dims(domain.tensor, 1)
+            X = tf.expand_dims(domain.tensor)
             difference = tf.abs(tf.subtract(self.mu, X))
             normalized_weights = tf.multiply(self.W, tf.reciprocal(tf.reduce_sum(self.W, 1, keep_dims=True)))
             weighted_difference = tf.multiply(normalized_weights, difference)
@@ -243,11 +320,28 @@ class Predicate:
             # aggregate as max over all receptive fields (todo: also use weighted sum?)
             #result = tf.reduce_max(membership, keep_dims = True)
             result = tf.matmul(membership, tf.multiply(self.u, tf.reciprocal(tf.reduce_sum(self.u, 1, keep_dims=True))))
+            
         elif self.ltn_type == "linear":
+            # use a simple linear NN
             X = domain.tensor
             XV = tf.matmul(X, tf.transpose(self.V))
             gX = tf.matmul(tf.tanh(XV + self.b),self.u)
             result = tf.sigmoid(gX)
+            print result.shape
+            
+        elif self.ltn_type == "cuboid":
+            # use a single cuboid
+            X = domain.tensor
+            y = tf.maximum(self.p_min, tf.minimum(X, self.p_max))            
+            #normalized_weights = tf.divide(self.weights, tf.reduce_sum(self.weights))
+            #eucl_dist = tf.sqrt(tf.reduce_sum(tf.multiply(normalized_weights, tf.square(tf.subtract(X,y))),axis=1, keep_dims = True))
+            diff = tf.subtract(X,y)
+            square = tf.square(diff)
+            summed = tf.reduce_sum(square, axis=1, keep_dims = True) + 1e-15
+            eucl_dist = tf.sqrt(summed)
+            exp = tf.exp(-self.c * eucl_dist)
+            result = exp
+            
         else:
             raise Exception("Unknown LTN type - cannot compute membership")
         
@@ -311,6 +405,12 @@ class Literal:
             self.tensor = predicate.tensor(domain)
         else:
             self.tensor = 1-predicate.tensor(domain)
+#        self.y = predicate.y
+#        self.diff = predicate.diff
+#        self.square = predicate.square
+#        self.sum = predicate.sum
+#        self.eucl_dist = predicate.eucl_dist
+#        self.exp = predicate.exp
 
 class Clause:
     def __init__(self,literals,label=None, weight=1.0):
@@ -337,8 +437,8 @@ class KnowledgeBase:
             if default_clauses_aggregator == "mean":
                 self.tensor = tf.reduce_mean(clauses_value_tensor,name=label)
             if default_clauses_aggregator == "hmean":
-                self.tensor = tf.div(tf.to_float(tf.size(clauses_value_tensor)),
-                                        tf.reduce_sum(tf.reciprocal(clauses_value_tensor), keep_dims=True),name=label)
+                self.tensor = tf.squeeze(tf.div(tf.to_float(tf.size(clauses_value_tensor)),
+                                        tf.reduce_sum(tf.reciprocal(clauses_value_tensor), keep_dims=True),name=label))
             if default_clauses_aggregator == "wmean":
                 weights_tensor = tf.constant([cl.weight for cl in clauses])
                 self.tensor = tf.div(tf.reduce_sum(tf.multiply(weights_tensor, clauses_value_tensor)),tf.reduce_sum(weights_tensor),name=label)
