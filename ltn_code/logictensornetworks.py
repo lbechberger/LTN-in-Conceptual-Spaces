@@ -264,10 +264,10 @@ class Predicate:
             self.parameters = [self.V, self.b]   
             
         elif self.ltn_type == "cuboid":
-            # use a single cuboid
+            # use a fuzzy simple star-shaped set based on cuboids
             self.prototype = tf.Variable(tf.reduce_mean(data_points, axis=0, keep_dims=True))
-            self.first_vector = tf.abs(tf.Variable(tf.random_normal(shape=[1, self.domain.columns], stddev=0.15)))
-            self.second_vector = tf.abs(tf.Variable(tf.random_normal(shape=[1, self.domain.columns], stddev=0.15)))
+            self.first_vector = tf.abs(tf.Variable(tf.random_normal(shape=[self.number_of_layers, self.domain.columns], stddev=0.15)))
+            self.second_vector = tf.abs(tf.Variable(tf.random_normal(shape=[self.number_of_layers, self.domain.columns], stddev=0.15)))
             self.point_1 = tf.add(self.prototype, self.first_vector)
             self.point_2 = tf.subtract(self.prototype, self.second_vector)
             self.p_min = tf.minimum(self.point_1, self.point_2)
@@ -325,13 +325,13 @@ class Predicate:
             
         elif self.ltn_type == "cuboid":
             # use a single cuboid
-            X = domain.tensor
+            X = tf.stack([domain.tensor]*self.number_of_layers, axis=1)
             y = tf.maximum(self.p_min, tf.minimum(X, self.p_max))            
             normalized_weights = tf.divide(self.weights, tf.reduce_sum(self.weights))
             # need to add a small epsilon before doing sqrt such that gradient is always defined
-            eucl_dist = tf.sqrt(tf.reduce_sum(tf.multiply(normalized_weights, tf.square(tf.subtract(X,y))),axis=1, keep_dims = True) + 1e-15)
+            eucl_dist = tf.sqrt(tf.reduce_sum(tf.multiply(normalized_weights, tf.square(tf.subtract(X,y))),axis=2, keep_dims = True) + 1e-15)
             exp = tf.exp(-self.c * eucl_dist)
-            result = exp
+            result = tf.reduce_max(exp, axis=1)
             
         else:
             raise Exception("Unknown LTN type - cannot compute membership")
@@ -396,12 +396,6 @@ class Literal:
             self.tensor = predicate.tensor(domain)
         else:
             self.tensor = 1-predicate.tensor(domain)
-#        self.y = predicate.y
-#        self.diff = predicate.diff
-#        self.square = predicate.square
-#        self.sum = predicate.sum
-#        self.eucl_dist = predicate.eucl_dist
-#        self.exp = predicate.exp
 
 class Clause:
     def __init__(self,literals,label=None, weight=1.0):

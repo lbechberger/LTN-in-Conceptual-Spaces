@@ -168,6 +168,21 @@ for label, concept in concepts.iteritems():
 # compute evaluation measures 
 util.evaluate(training_memberships, config["training_vectors"], validation_memberships, config["validation_vectors"])
 
+#if ltn.default_type == 'cuboid':
+#    for label, concept in concepts.iteritems():
+#        prot, first, second, p1, p2, p_min, p_max, c, weights = sess.run([concept.prototype, concept.first_vector, concept.second_vector, concept.point_1, concept.point_2, concept.p_min, concept.p_max, concept.c, concept.weights], feed_dict = {conceptual_space.tensor:training_data})
+#        print label
+#        print "prototype: {0}".format(prot)
+#        print "first_vector: {0}".format(first)
+#        print "second_vector: {0}".format(second)
+#        print "point_1: {0}".format(p1)
+#        print "point_2: {0}".format(p2)
+#        print "p_min: {0}".format(p_min)
+#        print "p_max: {0}".format(p_max)
+#        print "c: {0}".format(c)
+#        print "weights: {0}".format(weights)
+#        print " "
+
 # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
 
 # visualize the results for 2D and 3D data
@@ -268,10 +283,11 @@ elif args.plot and config["num_dimensions"] == 3:
                 
                 return x, y, z
             
-            p_min = np.squeeze(sess.run(concepts[label].p_min))
-            p_max = np.squeeze(sess.run(concepts[label].p_max))
-            x,y,z = _cuboid_data_3d(p_min, p_max)
-            ax.plot_surface(x, y, z, color="grey", rstride=1, cstride=1, alpha=0.1)
+            p_min = sess.run(concepts[label].p_min)
+            p_max = sess.run(concepts[label].p_max)
+            for i in range(ltn.default_layers):
+                x,y,z = _cuboid_data_3d(p_min[i], p_max[i])
+                ax.plot_surface(x, y, z, color="grey", rstride=1, cstride=1, alpha=0.1)
         ax.set_title(label)
         yg = ax.scatter(xs, ys, zs, c=colors, marker='o')
         cb = fig.colorbar(colmap)
