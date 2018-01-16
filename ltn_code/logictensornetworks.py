@@ -116,9 +116,6 @@ class Constant(Domain):
                 self.tensor = tf.Variable(tf.random_normal([1, domain.columns], mean=1),name=label)
             self.parameters = []
 
-
-
-
 class Function:
     def __init__(self, label, domain, range, value=None,mean=0.0,stddev=0.5):
         self.label = label
@@ -268,14 +265,11 @@ class Predicate:
             
         elif self.ltn_type == "cuboid":
             # use a single cuboid
-#            if data_points == None:
-#                self.p_min = tf.Variable(tf.random_normal([1,self.domain.columns]), name = "p_min_" + label)
-#            else:
-#                self.p_min = tf.Variable(tf.expand_dims(tf.reduce_mean(data_points, axis=0), 1))
-#            self.point_1 = tf.Variable(tf.add(tf.reduce_min(data_points, axis=0, keep_dims=True), tf.random_normal(shape=[1,self.domain.columns], stddev=0.05)), name = self.label + "p_1")#tf.random_normal([1,self.domain.columns]))            
-#            self.point_2 = tf.Variable(tf.add(tf.reduce_max(data_points, axis=0, keep_dims=True), tf.random_normal(shape=[1,self.domain.columns], stddev=0.05)), name = self.label + "p_2")#tf.Variable(tf.random_normal([1,self.domain.columns]))
-            self.point_1 = tf.Variable(tf.add(tf.reduce_mean(data_points, axis=0, keep_dims=True), tf.random_normal(shape=[1,self.domain.columns], stddev=0.15)))#tf.random_normal([1,self.domain.columns]))            
-            self.point_2 = tf.Variable(tf.add(tf.reduce_mean(data_points, axis=0, keep_dims=True), tf.random_normal(shape=[1,self.domain.columns], stddev=0.15)))#tf.Variable(tf.random_normal([1,self.domain.columns]))
+            self.prototype = tf.Variable(tf.reduce_mean(data_points, axis=0, keep_dims=True))
+            self.first_vector = tf.abs(tf.Variable(tf.random_normal(shape=[1, self.domain.columns], stddev=0.15)))
+            self.second_vector = tf.abs(tf.Variable(tf.random_normal(shape=[1, self.domain.columns], stddev=0.15)))
+            self.point_1 = tf.add(self.prototype, self.first_vector)
+            self.point_2 = tf.subtract(self.prototype, self.second_vector)
             self.p_min = tf.minimum(self.point_1, self.point_2)
             self.p_max = tf.maximum(self.point_1, self.point_2)
             self.c = tf.abs(tf.Variable(tf.constant(10.0, shape=[1])))
