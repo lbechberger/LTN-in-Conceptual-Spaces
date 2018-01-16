@@ -279,7 +279,7 @@ class Predicate:
             self.p_min = tf.minimum(self.point_1, self.point_2)
             self.p_max = tf.maximum(self.point_1, self.point_2)
             self.c = tf.abs(tf.Variable(tf.constant(10.0, shape=[1])))
-            #self.weights = tf.abs(tf.Variable(tf.ones(shape=[self.domain.columns]), name = "W"+label))
+            self.weights = tf.abs(tf.Variable(tf.ones(shape=[self.domain.columns]), name = "W"+label))
             self.parameters = [tf.abs(tf.subtract(self.point_1, self.point_2))]
             
         else:
@@ -333,12 +333,9 @@ class Predicate:
             # use a single cuboid
             X = domain.tensor
             y = tf.maximum(self.p_min, tf.minimum(X, self.p_max))            
-            #normalized_weights = tf.divide(self.weights, tf.reduce_sum(self.weights))
-            #eucl_dist = tf.sqrt(tf.reduce_sum(tf.multiply(normalized_weights, tf.square(tf.subtract(X,y))),axis=1, keep_dims = True))
-            diff = tf.subtract(X,y)
-            square = tf.square(diff)
-            summed = tf.reduce_sum(square, axis=1, keep_dims = True) + 1e-15
-            eucl_dist = tf.sqrt(summed)
+            normalized_weights = tf.divide(self.weights, tf.reduce_sum(self.weights))
+            # need to add a small epsilon before doing sqrt such that gradient is always defined
+            eucl_dist = tf.sqrt(tf.reduce_sum(tf.multiply(normalized_weights, tf.square(tf.subtract(X,y))),axis=1, keep_dims = True) + 1e-15)
             exp = tf.exp(-self.c * eucl_dist)
             result = exp
             

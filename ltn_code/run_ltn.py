@@ -10,7 +10,7 @@ import logictensornetworks as ltn
 import numpy as np
 
 import re, random, argparse
-from math import sqrt, isnan
+from math import sqrt
 
 import util
 
@@ -75,28 +75,19 @@ rules = []
 feed_dict = {}
 for label in config["concepts"]:
     
-    concepts[label] = {layer:ltn.Predicate("{0}_{1}".format(label, layer), conceptual_space, data_points = pos_examples[label]) for layer in range(ltn.default_layers)}
-    #concepts[label] = ltn.Predicate(label, conceptual_space, data_points = pos_examples[label])
-    #concepts[label] = ltn.CompositePredicate(label, conceptual_space, layers = 1)
-    #rules += concepts[label].constraints()
+    concepts[label] = ltn.Predicate(label, conceptual_space, data_points = pos_examples[label])
     
     # it can happen that we don't have any positive examples; then: don't try to add a rule
     if len(pos_examples[label]) > 0:
         pos_domain = ltn.Domain(conceptual_space.columns, label = label + "_pos_ex")
-        rules.append(ltn.Clause([ltn.Literal(True, concepts[label][layer], pos_domain) for layer in range(ltn.default_layers)], label="{0}Const".format(label), weight = len(pos_examples[label])))
+        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], pos_domain)], label="{0}Const".format(label), weight = len(pos_examples[label])))
         feed_dict[pos_domain.tensor] = pos_examples[label]
         
     if len(neg_examples[label]) > 0:    
         neg_domain = ltn.Domain(conceptual_space.columns, label = label + "_neg_ex")
-        #rules.append(ltn.Clause([ltn.Literal(False, concepts[label], neg_domain)], label="{0}ConstNot".format(label), weight = len(neg_examples[label])))
-        for layer in range(ltn.default_layers):        
-            rules.append(ltn.Clause([ltn.Literal(False, concepts[label][layer], neg_domain)], label="{0}ConstNot".format(label), weight = len(neg_examples[label])))
+        rules.append(ltn.Clause([ltn.Literal(False, concepts[label], neg_domain)], label="{0}ConstNot".format(label), weight = len(neg_examples[label])))
         feed_dict[neg_domain.tensor] = neg_examples[label]
 
-    mean = np.mean(pos_examples[label], axis=0)
-    prototypes[label] = ltn.Constant(label + "prototype", domain = conceptual_space, init_with = mean)
-    for layer in range(ltn.default_layers):
-        rules.append(ltn.Clause([ltn.Literal(True, concepts[label][layer], prototypes[label])], label=label+"prot_rule", weight = len(neg_examples[label])))
 
 # parse rules file
 num_rules = 0
@@ -144,78 +135,22 @@ sess.run(init)
 sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
 print("initialization", sat_level)
 
-for clause in KB.clauses:
-    print clause.label, sess.run([clause.tensor, clause.parameters], feed_dict = feed_dict)
-    if "prot" in clause.label:
-            print sess.run([lit.domain.tensor for lit in clause.literals])
-
 if ltn.default_type != "cuboid":
     # if first initialization was horrible: re-try until we get something reasonable
     while sat_level < 1e-10:
         sess.run(init)
         sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
         print "initialization",sat_level
-#print(0, " ------> ", sat_level)
-if ltn.default_type == "cuboid":
-    for label in config["concepts"]:
-        for layer in range(ltn.default_layers):
-            p_min = np.squeeze(sess.run(concepts[label][layer].p_min))
-            p_max = np.squeeze(sess.run(concepts[label][layer].p_max))
-            p_one = np.squeeze(sess.run(concepts[label][layer].point_1))
-            p_two = np.squeeze(sess.run(concepts[label][layer].point_2))
-            print label, layer, p_one, p_two, "---",  p_min, p_max  
+print(0, " ------> ", sat_level)
 
-sat_level, loss, params, pos_facts = sess.run([KB.tensor, KB.loss, ltn.smooth(KB.parameters), KB.penalize_positive_facts()], feed_dict = feed_dict)
-print(0, " ------> ", sat_level, " -- ", loss, params, pos_facts)
 
 # train for at most max_iter iterations (stop if we hit 99% satisfiability earlier)
 for i in range(config["max_iter"]):
-#    for variable in tf.trainable_variables():
-#        print variable, sess.run([variable, tf.gradients(KB.loss, variable)], feed_dict = feed_dict)
-#        
-#    for clause in KB.clauses:
-#        for literal in clause.literals:
-#            x = sess.run([tf.gradients(KB.loss, literal.y), tf.gradients(KB.loss, literal.diff), tf.gradients(KB.loss, literal.square), tf.gradients(KB.loss, literal.sum), tf.gradients(KB.loss, literal.eucl_dist), tf.gradients(KB.loss, literal.exp)], feed_dict = feed_dict) 
-#            print clause.label, literal.predicate.label, x
     buf = KB.train(sess, feed_dict = feed_dict)
-    sat_level, loss, params, pos_facts = sess.run([KB.tensor, KB.loss, ltn.smooth(KB.parameters), KB.penalize_positive_facts()], feed_dict = feed_dict)
-#    sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
-#    loss = sess.run(KB.loss, feed_dict = feed_dict)
-#    params = sess.run(ltn.smooth(KB.parameters), feed_dict = feed_dict)
-#    pos_facts = sess.run(KB.penalize_positive_facts(), feed_dict = feed_dict)
-#    tensor = sess.run(KB.tensor, feed_dict = feed_dict)
-    print(i + 1, " ------> ", sat_level, " -- ", loss, params, pos_facts)
-#    if isnan(loss):
-#        break
-#    for clause in KB.clauses:
-#        print clause.label, sess.run([clause.tensor, clause.parameters], feed_dict = feed_dict)
-#        if "prot" in clause.label:
-#            print sess.run([lit.domain.tensor for lit in clause.literals])
-#    if ltn.default_type == "cuboid":
-#        for label in config["concepts"]:
-#            for layer in range(ltn.default_layers):
-#                p_min = np.squeeze(sess.run(concepts[label][layer].p_min))
-#                p_max = np.squeeze(sess.run(concepts[label][layer].p_max))
-#                p_one = np.squeeze(sess.run(concepts[label][layer].point_1))
-#                p_two = np.squeeze(sess.run(concepts[label][layer].point_2))
-#                print label, layer, p_one, p_two, "---",  p_min, p_max  
+    sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
+    print(i + 1, " ------> ", sat_level)
     if sat_level > .99:
         break
-
-for clause in KB.clauses:
-    print clause.label, sess.run(clause.tensor, feed_dict = feed_dict)
-    if "prot" in clause.label:
-            print sess.run([lit.domain.tensor for lit in clause.literals])
-
-if ltn.default_type == "cuboid":
-    for label in config["concepts"]:
-        for layer in range(ltn.default_layers):
-            p_min = np.squeeze(sess.run(concepts[label][layer].p_min))
-            p_max = np.squeeze(sess.run(concepts[label][layer].p_max))
-            p_one = np.squeeze(sess.run(concepts[label][layer].point_1))
-            p_two = np.squeeze(sess.run(concepts[label][layer].point_2))
-            print label, layer, p_one, p_two, "---",  p_min, p_max  
-
 
 #KB.save(sess)  # save the result if needed
 
@@ -224,10 +159,8 @@ validation_data = map(lambda x: x[1], config["validation_vectors"])
 validation_memberships = {}
 training_memberships = {}
 for label, concept in concepts.iteritems():
-    validation_memberships[label] = np.squeeze(sess.run(ltn.apply_t_norm([ltn.Literal(True, concept[layer]) for layer in range(ltn.default_layers)]), {conceptual_space.tensor:validation_data}))
-#    print validation_memberships[label]
-#    print validation_data
-    training_memberships[label] = np.squeeze(sess.run(ltn.apply_t_norm([ltn.Literal(True, concept[layer]) for layer in range(ltn.default_layers)]), {conceptual_space.tensor:training_data}))
+    validation_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:validation_data}))
+    training_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:training_data}))
     max_membership = max(validation_memberships[label])
     min_membership = min(validation_memberships[label])
     print "{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership)
@@ -308,40 +241,39 @@ elif args.plot and config["num_dimensions"] == 3:
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)
         ax = fig.add_subplot(rows, columns, counter, projection='3d')
-        # also plot the actual box
-        def _cuboid_data_3d(p_min, p_max):
-            """Returns the 3d information necessary for plotting a 3d cuboid."""
-            
-            a = 0
-            b = 1
-            c = 2    
-            
-            x = [[p_min[a], p_max[a], p_max[a], p_min[a], p_min[a]],  # bottom
-                 [p_min[a], p_max[a], p_max[a], p_min[a], p_min[a]],  # top
-                 [p_min[a], p_max[a], p_max[a], p_min[a], p_min[a]],  # front
-                 [p_min[a], p_max[a], p_max[a], p_min[a], p_min[a]]]  # back
-                 
-            y = [[p_min[b], p_min[b], p_max[b], p_max[b], p_min[b]],  # bottom
-                 [p_min[b], p_min[b], p_max[b], p_max[b], p_min[b]],  # top
-                 [p_min[b], p_min[b], p_min[b], p_min[b], p_min[b]],  # front
-                 [p_max[b], p_max[b], p_max[b], p_max[b], p_max[b]]]  # back
-                 
-            z = [[p_min[c], p_min[c], p_min[c], p_min[c], p_min[c]],  # bottom
-                 [p_max[c], p_max[c], p_max[c], p_max[c], p_max[c]],  # top
-                 [p_min[c], p_min[c], p_max[c], p_max[c], p_min[c]],  # front
-                 [p_min[c], p_min[c], p_max[c], p_max[c], p_min[c]]]  # back
-            
-            return x, y, z
         
         if ltn.default_type == "cuboid":
-            for layer in range(ltn.default_layers):
-                p_min = np.squeeze(sess.run(concepts[label][layer].p_min))
-                p_max = np.squeeze(sess.run(concepts[label][layer].p_max))
-                x,y,z = _cuboid_data_3d(p_min, p_max)
-                ax.plot_surface(x, y, z, color="grey", rstride=1, cstride=1, alpha=0.1)
+            # also plot the actual box
+            def _cuboid_data_3d(p_min, p_max):
+                """Returns the 3d information necessary for plotting a 3d cuboid."""
+                
+                a = 0
+                b = 1
+                c = 2    
+                
+                x = [[p_min[a], p_max[a], p_max[a], p_min[a], p_min[a]],  # bottom
+                     [p_min[a], p_max[a], p_max[a], p_min[a], p_min[a]],  # top
+                     [p_min[a], p_max[a], p_max[a], p_min[a], p_min[a]],  # front
+                     [p_min[a], p_max[a], p_max[a], p_min[a], p_min[a]]]  # back
+                     
+                y = [[p_min[b], p_min[b], p_max[b], p_max[b], p_min[b]],  # bottom
+                     [p_min[b], p_min[b], p_max[b], p_max[b], p_min[b]],  # top
+                     [p_min[b], p_min[b], p_min[b], p_min[b], p_min[b]],  # front
+                     [p_max[b], p_max[b], p_max[b], p_max[b], p_max[b]]]  # back
+                     
+                z = [[p_min[c], p_min[c], p_min[c], p_min[c], p_min[c]],  # bottom
+                     [p_max[c], p_max[c], p_max[c], p_max[c], p_max[c]],  # top
+                     [p_min[c], p_min[c], p_max[c], p_max[c], p_min[c]],  # front
+                     [p_min[c], p_min[c], p_max[c], p_max[c], p_min[c]]]  # back
+                
+                return x, y, z
+            
+            p_min = np.squeeze(sess.run(concepts[label].p_min))
+            p_max = np.squeeze(sess.run(concepts[label].p_max))
+            x,y,z = _cuboid_data_3d(p_min, p_max)
+            ax.plot_surface(x, y, z, color="grey", rstride=1, cstride=1, alpha=0.1)
         ax.set_title(label)
         yg = ax.scatter(xs, ys, zs, c=colors, marker='o')
-        #prot = ax.scatter(np.squeeze(sess.run(prototypes[label].tensor))[0], np.squeeze(sess.run(prototypes[label].tensor))[1], np.squeeze(sess.run(prototypes[label].tensor))[2], marker = 'x')
         cb = fig.colorbar(colmap)
         counter += 1
         
