@@ -10,7 +10,7 @@ import logictensornetworks as ltn
 import numpy as np
 
 import re, random, argparse
-from math import sqrt
+from math import sqrt, isnan
 
 import util
 
@@ -216,6 +216,42 @@ if args.plot and config["num_dimensions"] == 2:
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)
         ax = fig.add_subplot(rows, columns, counter)
+        
+        if ltn.default_type == "cuboid":
+            # also plot the actual box
+            import matplotlib.patches as patches
+            import shapely.geometry
+            from matplotlib.path import Path
+            
+            def _path_for_core(cuboids, d1, d2):
+                """Creates the 2d path for a complete core."""
+            
+                polygon = None    
+                for cuboid in cuboids:
+                    p_min = cuboid[0]
+                    p_max = cuboid[1]
+                    cub = shapely.geometry.box(p_min[d1], p_min[d2], p_max[d1], p_max[d2])
+                    if polygon == None:
+                        polygon = cub
+                    else:
+                        polygon = polygon.union(cub)
+                
+                verts = list(polygon.exterior.coords)
+                codes = [Path.LINETO] * len(verts)
+                codes[0] = Path.MOVETO
+                codes[-1] = Path.CLOSEPOLY
+                
+                path = Path(verts, codes)
+                return path
+                
+            p_min = sess.run(concepts[label].p_min)
+            p_max = sess.run(concepts[label].p_max)
+            cuboids = zip(p_min, p_max)
+            if not isnan(p_min[0][0]):
+                core_path = _path_for_core(cuboids, 0, 1)
+                core_patch = patches.PathPatch(core_path, facecolor='grey', lw=2, alpha=0.4)
+                ax.add_patch(core_patch)
+        
         ax.set_title(label)
         yg = ax.scatter(xs, ys, c=colors, marker='o')
         cb = fig.colorbar(colmap)
