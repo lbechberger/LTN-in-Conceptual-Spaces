@@ -10,7 +10,7 @@ default_clauses_aggregator = "min"      # aggregate over clauses to define overa
 default_optimizer = "gd"                # optimizing algorithm to use; 'ftrl', 'gd', 'ada', 'rmsprop'
 default_positive_fact_penality = 1e-6   # penalty for predicates that are true everywhere
 default_norm_of_u = 5.0                 # initialization of the u vector (determining how close to 0 and 1 the membership values can get)
-default_type = "original"               # default type of membership function to use; 'original', 'rbfDistribution', 'prototype', 'linear', 'cuboid'
+default_type = "original"               # default type of membership function to use; 'original', 'rbf', 'prototype', 'linear', 'cuboid'
 default_epsilon = 1e-4                  # smoothing parameter for covariance matrix of 'rbf' type
 
 def train_op(loss, optimization_algorithm):
@@ -185,16 +185,14 @@ class Predicate:
             self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
             self.parameters = [self.W]
             
-        elif self.ltn_type == "rbfDistribution":
+        elif self.ltn_type == "rbf":
             # mu is the center of the receptive field, W is the basis for the covariance matrix
             if data_points == None:
-                self.W = tf.Variable(tf.eye(self.domain.columns, batch_shape=[self.number_of_layers]), name = "W"+label)
                 self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
             else:
                 # make initial guess based on some data points
-                self.mu = tf.Variable(tf.expand_dims(tf.reduce_mean(data_points, 0), 1))
-                self.W = tf.Variable(tf.eye(self.domain.columns, batch_shape=[self.number_of_layers]), name = "W"+label)
-            self.u = tf.Variable(tf.ones(shape=[self.number_of_layers,1]), name = "u"+label)
+                self.mu = tf.Variable(tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers))
+            self.W = tf.Variable(tf.eye(self.domain.columns, batch_shape=[self.number_of_layers]), name = "W"+label)
             self.parameters = [self.W]
             
         elif self.ltn_type == "prototype":
@@ -243,17 +241,17 @@ class Predicate:
             gX = tf.matmul(tf.tanh(XWX),self.u)
             result = tf.sigmoid(gX,name=self.label+"_at_"+domain.label)
             
-        elif self.ltn_type == "rbfDistribution":
+        elif self.ltn_type == "rbf":
             # compute covariance as WW' + eps*I (try to ensure positive definiteness)
             scaled_eye = tf.multiply(tf.eye(self.domain.columns), tf.constant(default_epsilon, shape=self.W.shape))
             covariance = tf.add(tf.matmul(self.W, self.W, transpose_b = True), scaled_eye)
             # multivariate normal distribution with mu and covariance; normalize pdf by prob(mu)            
             dist = tf.contrib.distributions.MultivariateNormalFullCovariance(self.mu, covariance)
             height = dist.prob(self.mu)
-            X = tf.expand_dims(domain.tensor, 1)
+            X = tf.stack([domain.tensor]*self.number_of_layers, axis=1)#tf.expand_dims(domain.tensor, 1)
             rbf = tf.multiply(dist.prob(X), tf.reciprocal(height))
-            # take a linear combination of the different receptive fields based on u
-            result = tf.matmul(rbf, tf.multiply(self.u, tf.reciprocal(tf.reduce_sum(self.u, 1, keep_dims=True))))
+            # aggregate as max over all receptive fields
+            result = tf.reduce_max(rbf, axis=1, keep_dims=True)
             
         elif self.ltn_type == "prototype":
             # compute weighted distance to prototype
@@ -273,7 +271,6 @@ class Predicate:
             XV = tf.matmul(X, tf.transpose(self.V))
             gX = tf.matmul(tf.tanh(XV + self.b),self.u)
             result = tf.sigmoid(gX)
-            print result.shape
             
         elif self.ltn_type == "cuboid":
             # use a single cuboid
