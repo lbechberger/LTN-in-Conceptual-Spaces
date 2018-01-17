@@ -10,7 +10,7 @@ default_clauses_aggregator = "min"      # aggregate over clauses to define overa
 default_optimizer = "gd"                # optimizing algorithm to use; 'ftrl', 'gd', 'ada', 'rmsprop'
 default_positive_fact_penality = 1e-6   # penalty for predicates that are true everywhere
 default_norm_of_u = 5.0                 # initialization of the u vector (determining how close to 0 and 1 the membership values can get)
-default_type = "original"               # default type of membership function to use; 'original', 'rbfDistribution', 'rbfDistance', 'linear', 'cuboid'
+default_type = "original"               # default type of membership function to use; 'original', 'rbfDistribution', 'prototype', 'linear', 'cuboid'
 default_epsilon = 1e-4                  # smoothing parameter for covariance matrix of 'rbf' type
 
 def train_op(loss, optimization_algorithm):
@@ -157,53 +157,6 @@ class Term(Domain):
         self.columns = function.columns
         self.tensor = self.function.tensor(self.domain)
 
-class CompositePredicate:
-    def __init__(self, label, domain, layers = None, ltn_type = None):
-        self.label = label
-        self.domain = domain
-        if layers == None:
-            self.number_of_layers = default_layers
-        else:
-            self.number_of_layers = layers
-        
-        if ltn_type == None:
-            self.ltn_type = default_type
-        else:
-            self.ltn_type = ltn_type
-            
-        self.predicates = []
-        self.parameters = []
-        for i in range(self.number_of_layers):
-            pred = Predicate("{0}_{1}".format(label, i), self.domain, layers = 1, ltn_type = self.ltn_type)
-            self.predicates.append(pred)
-            self.parameters += pred.parameters
-        print self.predicates
-        
-    def tensor(self, domain = None):
-        if domain is None:
-            domain = self.domain
-        return self.predicates[0].tensor(domain) 
-        #return tf.reduce_max(tf.concat([p.tensor() for p in self.predicates], 0), keep_dims = True)
-        #return Clause([Literal(True, pred, domain) for pred in self.predicates], label="clause"+self.label)
-        list_of_pred_tensors = [p.tensor(self.domain) for p in self.predicates]
-        literals_tensor = tf.concat(list_of_pred_tensors,1)
-        if default_tnorm == "product":
-            result = 1.0-tf.reduce_prod(1.0-literals_tensor,1,keep_dims=True)
-        if default_tnorm=="yager2":
-            result = tf.minimum(1.0,tf.sqrt(tf.reduce_sum(tf.square(literals_tensor),1, keep_dims=True)))
-        if default_tnorm=="luk":
-            result = tf.minimum(1.0,tf.reduce_sum(literals_tensor,1, keep_dims=True))
-        if default_tnorm == "goedel":
-            result = tf.reduce_max(literals_tensor,1,keep_dims=True,name=self.label)   
-        return result
-        
-    def constraints(self):
-        point = Constant(label = self.label + "_prototype", domain = self.domain)
-        clauses = []
-        for pred in self.predicates:
-            clauses.append(Clause([Literal(True, pred, point)]))
-        return clauses
-
 class Predicate:
     def __init__(self, label, domain, layers = None, max_min = 0.0, ltn_type = None, data_points = None):
         self.label = label
@@ -244,17 +197,16 @@ class Predicate:
             self.u = tf.Variable(tf.ones(shape=[self.number_of_layers,1]), name = "u"+label)
             self.parameters = [self.W]
             
-        elif self.ltn_type == "rbfDistance":
+        elif self.ltn_type == "prototype":
             # W contains a weight for each dimension
             if data_points == None:
-                self.W = tf.Variable(tf.constant(1.0/self.domain.columns, shape=[self.number_of_layers, self.domain.columns]), name = "W"+label)
-                self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
+                self.prototypes = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
             else:
                 # make initial guess based on some data points
-                self.mu = tf.Variable(tf.expand_dims(tf.reduce_mean(data_points, 0), 1))
-                self.W = tf.Variable(tf.constant(1.0/self.domain.columns, shape=[self.number_of_layers, self.domain.columns]), name = "W"+label)
-            self.u = tf.Variable(tf.ones(shape=[self.number_of_layers,1]), name = "u"+label)
-            self.parameters = [self.W]
+                self.prototypes = tf.Variable(tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers))
+            self.weights = tf.abs(tf.Variable(tf.ones(shape=[self.domain.columns]), name = "W"+label))
+            self.c = tf.abs(tf.Variable(tf.constant(10.0, shape=[1])))
+            self.parameters = [-self.c]
             
         elif self.ltn_type == "linear":
             # use only a linear model
@@ -303,17 +255,17 @@ class Predicate:
             # take a linear combination of the different receptive fields based on u
             result = tf.matmul(rbf, tf.multiply(self.u, tf.reciprocal(tf.reduce_sum(self.u, 1, keep_dims=True))))
             
-        elif self.ltn_type == "rbfDistance":
+        elif self.ltn_type == "prototype":
             # compute weighted distance to prototype
-            X = tf.expand_dims(domain.tensor)
-            difference = tf.abs(tf.subtract(self.mu, X))
-            normalized_weights = tf.multiply(self.W, tf.reciprocal(tf.reduce_sum(self.W, 1, keep_dims=True)))
+            X = tf.stack([domain.tensor]*self.number_of_layers, axis=1)
+            difference = tf.square(tf.subtract(self.prototypes, X))
+            normalized_weights = tf.divide(self.weights, tf.reduce_sum(self.weights))
             weighted_difference = tf.multiply(normalized_weights, difference)
-            distance = tf.reduce_sum(weighted_difference, 1)
-            membership = tf.exp(-distance)
-            # aggregate as max over all receptive fields (todo: also use weighted sum?)
-            #result = tf.reduce_max(membership, keep_dims = True)
-            result = tf.matmul(membership, tf.multiply(self.u, tf.reciprocal(tf.reduce_sum(self.u, 1, keep_dims=True))))
+            distance = tf.reduce_sum(weighted_difference, axis = 2, keep_dims=True)
+            eucl_dist = tf.sqrt(distance + 1e-15)
+            membership = tf.exp(-self.c * eucl_dist)
+            # aggregate as max over all receptive fields
+            result = tf.reduce_max(membership, axis=1)
             
         elif self.ltn_type == "linear":
             # use a simple linear NN

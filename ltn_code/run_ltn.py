@@ -251,7 +251,11 @@ if args.plot and config["num_dimensions"] == 2:
                 core_path = _path_for_core(cuboids, 0, 1)
                 core_patch = patches.PathPatch(core_path, facecolor='grey', lw=2, alpha=0.4)
                 ax.add_patch(core_patch)
-        
+        elif ltn.default_type == "prototype":
+            # plot the prototype
+            prototypes = sess.run(concepts[label].prototypes)
+            for p in prototypes:
+                ax.scatter(p[0], p[1], marker='x')
         ax.set_title(label)
         yg = ax.scatter(xs, ys, c=colors, marker='o')
         cb = fig.colorbar(colmap)
@@ -324,6 +328,11 @@ elif args.plot and config["num_dimensions"] == 3:
             for i in range(ltn.default_layers):
                 x,y,z = _cuboid_data_3d(p_min[i], p_max[i])
                 ax.plot_surface(x, y, z, color="grey", rstride=1, cstride=1, alpha=0.1)
+        elif ltn.default_type == "prototype":
+            # plot the prototype
+            prototypes = sess.run(concepts[label].prototypes)
+            for p in prototypes:
+                ax.scatter(p[0], p[1], p[2], marker='x')
         ax.set_title(label)
         yg = ax.scatter(xs, ys, zs, c=colors, marker='o')
         cb = fig.colorbar(colmap)
