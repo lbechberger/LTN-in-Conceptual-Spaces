@@ -51,4 +51,4 @@ train_predictions = get_predictions(classifier, config["concepts"], training_dat
 validation_predictions = get_predictions(classifier, config["concepts"], validation_data)
 
 # evaluate the predictions
-util.evaluate(train_predictions, config["training_vectors"], validation_predictions, config["validation_vectors"])
+util.evaluate(train_predictions, config["training_vectors"], validation_predictions, config["validation_vectors"], config["concepts"])

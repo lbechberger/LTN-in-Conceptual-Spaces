@@ -166,7 +166,7 @@ for label, concept in concepts.iteritems():
     print "{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership)
 
 # compute evaluation measures 
-util.evaluate(training_memberships, config["training_vectors"], validation_memberships, config["validation_vectors"])
+util.evaluate(training_memberships, config["training_vectors"], validation_memberships, config["validation_vectors"], config["concepts"])
 
 #if ltn.default_type == 'cuboid':
 #    for label, concept in concepts.iteritems():
