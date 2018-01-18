@@ -177,19 +177,81 @@ def average_precision(predictions, vectors):
     
     average_precision = (1.0 * summed_precision) / count
     return average_precision
+
+def distinct_label_set(vectors):
+    """Computes the distinct label set of the given data set.
+    
+    How many distinct label combinations are there in the data set?"""
+
+    label_sets = []   
+    for (true_labels, vector) in vectors:
+        label_set = str(set(true_labels))
+        label_sets.append(label_set)
+    
+    return len(set(label_sets))
+
+def proportion_of_distinct_label_set(vectors):
+    """Computes the proportion of distinct label set of the given data set.
+    
+    Distinct label set normalized by the total number of training instances."""
+    
+    return (1.0 * distinct_label_set(vectors)) / len(vectors)
+
+def label_cardinality(vectors):
+    """Computes the label cardinality of the given data set.
+    
+    How many labels per example do we have on average?"""
+    
+    total_number_of_labels = 0
+    for (true_labels, vector) in vectors:
+        total_number_of_labels += len(true_labels)
+    
+    return (1.0 * total_number_of_labels) / len(vectors)
+
+def label_density(vectors, all_labels):
+    """Computes the label density of the given data set.
+    
+    Label cardinality normalized by the total number of labels."""
+    
+    return (1.0 * label_cardinality(vectors)) / len(all_labels)
     
 def evaluate(train_predictions, train_vectors, validation_predictions, validation_vectors, all_labels):
     """Evaluate the predictions both on the training and the validation set."""
     
     # training data (to get an idea about overfitting)
     print(" ")
+    print("TRAINING DATA")
+    print("=============")
+    print("")
+    print("Characteristics:")
+    print("----------------")
+    print("Distinct label set: {0}".format(distinct_label_set(train_vectors)))
+    print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(train_vectors)))
+    print("Label cardinality: {0}".format(label_cardinality(train_vectors)))
+    print("Label density: {0}".format(label_density(train_vectors, all_labels)))
+    print(" ")
+    print("Performance:")
+    print("------------")
     print("One error on training data: {0}".format(one_error(train_predictions, train_vectors)))
     print("Coverage on training data: {0}".format(coverage(train_predictions, train_vectors)))
     print("Ranking loss on training data: {0}".format(ranking_loss(train_predictions, train_vectors, all_labels)))
     print("Average precision on training data: {0}".format(average_precision(train_predictions, train_vectors)))
     
-    # test data (the stuff that matters)
+    # validation data (the stuff that matters)
     print(" ")
+    print(" ")
+    print("VALIDATION DATA")
+    print("===============")
+    print("")
+    print("Characteristics:")
+    print("----------------")
+    print("Distinct label set: {0}".format(distinct_label_set(validation_vectors)))
+    print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(validation_vectors)))
+    print("Label cardinality: {0}".format(label_cardinality(validation_vectors)))
+    print("Label density: {0}".format(label_density(validation_vectors, all_labels)))
+    print(" ")
+    print("Performance:")
+    print("------------")
     print("One error on validation data: {0}".format(one_error(validation_predictions, validation_vectors)))
     print("Coverage on validation data: {0}".format(coverage(validation_predictions, validation_vectors)))
     print("Ranking loss on validation data: {0}".format(ranking_loss(validation_predictions, validation_vectors, all_labels)))
