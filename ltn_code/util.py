@@ -219,7 +219,12 @@ def cross_entropy_loss(predictions, vectors):
             if predictions[label][idx] == 0:
                 sum_of_cross_entropies -= 1000
             else:
-                sum_of_cross_entropies += log(predictions[label][idx])
+                sum_of_cross_entropies += log(predictions[label][idx], 2)
+        else:
+            if predictions[label][idx] == 0:
+                sum_of_cross_entropies -= 1000
+            else:
+                sum_of_cross_entropies += log(1.0 - predictions[label][idx], 2)
         
         idx += 1
     

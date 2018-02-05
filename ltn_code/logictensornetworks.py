@@ -10,7 +10,7 @@ default_clauses_aggregator = "min"      # aggregate over clauses to define overa
 default_optimizer = "gd"                # optimizing algorithm to use; 'ftrl', 'gd', 'ada', 'rmsprop'
 default_positive_fact_penality = 1e-6   # penalty for predicates that are true everywhere
 default_norm_of_u = 5.0                 # initialization of the u vector (determining how close to 0 and 1 the membership values can get)
-default_type = "original"               # default type of membership function to use; 'original', 'rbf', 'prototype', 'linear', 'cuboid'
+default_type = "original"               # default type of membership function to use; 'original', 'rbf', 'prototype', 'linear', 'cuboid', 'quadratic'
 default_epsilon = 1e-4                  # smoothing parameter for covariance matrix of 'rbf' type
 
 def train_op(loss, optimization_algorithm):
@@ -226,6 +226,15 @@ class Predicate:
             self.weights = tf.abs(tf.Variable(tf.ones(shape=[self.domain.columns]), name = "W"+label))
             self.parameters = [tf.abs(tf.subtract(self.point_1, self.point_2))]
             
+        elif self.ltn_type == "quadratic":
+            self.W = tf.Variable(tf.random_normal([self.number_of_layers,
+                                                  self.domain.columns+1,
+                                                  self.domain.columns+1],stddev=0.5))
+            # modification by lbechberger: instead of using tf.ones, use tf.constant() to make sure that norm of u is ~5
+            # (which in turn ensures that the membership function can reach values close to 0 and 1)
+            self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
+            self.parameters = [self.W]
+            
         else:
             raise Exception("Unknown LTN type - cannot construct predicate")
 
@@ -281,6 +290,14 @@ class Predicate:
             eucl_dist = tf.sqrt(tf.reduce_sum(tf.multiply(normalized_weights, tf.square(tf.subtract(X,y))),axis=2, keep_dims = True) + 1e-15)
             exp = tf.exp(-self.c * eucl_dist)
             result = tf.reduce_max(exp, axis=1)
+            
+        elif self.ltn_type == "quadratic":
+            X = tf.concat([tf.ones((tf.shape(domain.tensor)[0],1)), domain.tensor],1)
+            neg_semidefinite_weights = -1.0 * tf.matmul(self.W, self.W, transpose_a = True)
+            XW = tf.matmul(tf.tile(tf.expand_dims(X, 0), [self.number_of_layers, 1, 1]), neg_semidefinite_weights)
+            XWX = tf.squeeze(tf.matmul(tf.expand_dims(X, 1), tf.transpose(XW, [1, 2, 0])),squeeze_dims=[1])
+            gX = tf.matmul(tf.tanh(XWX),self.u)
+            result = tf.sigmoid(gX,name=self.label+"_at_"+domain.label)
             
         else:
             raise Exception("Unknown LTN type - cannot compute membership")
