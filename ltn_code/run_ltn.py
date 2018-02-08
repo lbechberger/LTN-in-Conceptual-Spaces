@@ -115,7 +115,7 @@ with open(config["rules_file"], 'r') as f:
    
 
 # all data points in the conceptual space over which we would like to optimize:
-training_data = map(lambda x: x[1], config["training_vectors"])
+training_data = list(map(lambda x: x[1], config["training_vectors"]))
 feed_dict[conceptual_space.tensor] = training_data
 
 # print out some diagnostic information
@@ -155,10 +155,10 @@ for i in range(config["max_iter"]):
 #KB.save(sess)  # save the result if needed
 
 # evaluate the results: classify each of the test data points
-validation_data = map(lambda x: x[1], config["validation_vectors"])
+validation_data = list(map(lambda x: x[1], config["validation_vectors"]))
 validation_memberships = {}
 training_memberships = {}
-for label, concept in concepts.iteritems():
+for label, concept in concepts.items():
     validation_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:validation_data}))
     training_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:training_data}))
     max_membership = max(validation_memberships[label])
@@ -173,7 +173,7 @@ util.print_evaluation(eval_results)
 util.write_evaluation(eval_results, "output/{0}-LTN.csv".format(args.config_file.split('.')[0]), args.config_name)
 
 #if ltn.default_type == 'cuboid':
-#    for label, concept in concepts.iteritems():
+#    for label, concept in concepts.items():
 #        prot, first, second, p1, p2, p_min, p_max, c, weights = sess.run([concept.prototype, concept.first_vector, concept.second_vector, concept.point_1, concept.point_2, concept.p_min, concept.p_max, concept.c, concept.weights], feed_dict = {conceptual_space.tensor:training_data})
 #        print label
 #        print "prototype: {0}".format(prot)
@@ -197,8 +197,8 @@ if args.plot and config["num_dimensions"] == 2:
     import matplotlib.pyplot as plt
     
     fig = plt.figure(figsize=(16,10))
-    xs = map(lambda x: x[0], validation_data)
-    ys = map(lambda x: x[1], validation_data)
+    xs = list(map(lambda x: x[0], validation_data))
+    ys = list(map(lambda x: x[1], validation_data))
 
     # figure out how many subplots to create (rows and columns)
     num_concepts = len(concepts)
@@ -215,7 +215,7 @@ if args.plot and config["num_dimensions"] == 2:
     
     # for each concept, create a colored scatter plot of all unlabeled data points
     counter = 1
-    for label, memberships in validation_memberships.iteritems():
+    for label, memberships in validation_memberships.items():
         colors = cm.jet(memberships)
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)
@@ -276,9 +276,9 @@ elif args.plot and config["num_dimensions"] == 3:
     from mpl_toolkits.mplot3d import Axes3D
     
     fig = plt.figure(figsize=(16,10))
-    xs = map(lambda x: x[0], training_data)#validation_data)
-    ys = map(lambda x: x[1], training_data)#validation_data)
-    zs = map(lambda x: x[2], training_data)#validation_data)
+    xs = list(map(lambda x: x[0], validation_data))
+    ys = list(map(lambda x: x[1], validation_data))
+    zs = list(map(lambda x: x[2], validation_data))
 
     # figure out how many subplots to create (rows and columns)
     num_concepts = len(concepts)
@@ -295,7 +295,7 @@ elif args.plot and config["num_dimensions"] == 3:
     
     # for each concept, create a colored scatter plot of all unlabeled data points
     counter = 1
-    for label, memberships in training_memberships.iteritems():#validation_memberships.iteritems():
+    for label, memberships in training_memberships.items():#validation_memberships.items():
         colors = cm.jet(memberships)
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)

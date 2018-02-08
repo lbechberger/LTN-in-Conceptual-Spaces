@@ -6,14 +6,14 @@ Created on Mon Dec  4 12:19:52 2017
 
 @author: lbechberger
 """
-import ConfigParser
+from configparser import RawConfigParser
 from math import log
 import os, fcntl
 
 def parse_config_file(config_file_name, config_name):
     """Extracts all parameters of interest form the given config file."""
     result = {}
-    config = ConfigParser.RawConfigParser()
+    config = RawConfigParser()
     config.read(config_file_name)
     
     # general setup
@@ -61,7 +61,7 @@ def parse_features_file(file_name, n_dims):
     with open(file_name, 'r') as f:
         for line in f:
             chunks = line.replace('\n','').replace('\r','').split(",")
-            vec = map(float, chunks[:n_dims])
+            vec = list(map(float, chunks[:n_dims]))
             labels = [label for label in chunks[n_dims:] if label != '']
             feature_vectors.append((labels, vec))
     
@@ -86,7 +86,7 @@ def one_error(predictions, vectors):
     for (true_labels, vector) in vectors:
         predicted_label = None
         predicted_confidence = 0
-        for label, memberships in predictions.iteritems():
+        for label, memberships in predictions.items():
             conf = memberships[idx]
             if conf > predicted_confidence:
                 predicted_confidence = conf
@@ -107,7 +107,7 @@ def coverage(predictions, vectors):
     summed_depth = 0
     for (true_labels, vector) in vectors:
         filtered_predictions = []
-        for label, memberships in predictions.iteritems():
+        for label, memberships in predictions.items():
             filtered_predictions.append((label, memberships[idx]))
         filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
         depth = 0
@@ -156,7 +156,7 @@ def average_precision(predictions, vectors):
     count = 0
     for (true_labels, vector) in vectors:
         filtered_predictions = []
-        for label, memberships in predictions.iteritems():
+        for label, memberships in predictions.items():
             filtered_predictions.append((label, memberships[idx]))
         filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
         filtered_predictions = list(map(lambda x: x[0], filtered_predictions))
@@ -190,7 +190,7 @@ def exact_match_prefix(predictions, vectors):
     for (true_labels, vector) in vectors:
         n_labels = len(true_labels)
         filtered_predictions = []
-        for label, memberships in predictions.iteritems():
+        for label, memberships in predictions.items():
             filtered_predictions.append((label, memberships[idx]))
         filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
         filtered_predictions = list(map(lambda x: x[0], filtered_predictions))[:n_labels]
@@ -246,7 +246,7 @@ def label_wise_hit_rate(predictions, vectors, all_labels):
     idx = 0
     for (true_labels, vector) in vectors:
         filtered_predictions = []
-        for label, memberships in predictions.iteritems():
+        for label, memberships in predictions.items():
             filtered_predictions.append((label, memberships[idx]))
         filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
         for label in true_labels:
@@ -288,7 +288,7 @@ def print_evaluation(evaluation_results):
         
         print("\n{0}:".format(data_set))
         print("-"*(len(data_set) + 1))
-        for (name, result) in evaluation_results[data_set].iteritems():
+        for (name, result) in evaluation_results[data_set].items():
             print("{0}: {1}".format(name, result))
             
 def write_evaluation(evaluation_results, file_name, config_name):
@@ -299,10 +299,10 @@ def write_evaluation(evaluation_results, file_name, config_name):
         with open(file_name, 'w') as f:
             fcntl.flock(f, fcntl.LOCK_EX)
             f.write("config,data_set,")
-            for (data_set, evaluation) in evaluation_results.iteritems():
-                for (name, result) in evaluation.iteritems():
+            for (data_set, evaluation) in evaluation_results.items():
+                for (name, result) in evaluation.items():
                     if name=="label_wise_hit_rate":
-                        for (label, hit_rate) in result.iteritems():
+                        for (label, hit_rate) in result.items():
                             f.write("{0},".format(label))
                     else:
                         f.write("{0},".format(name))
@@ -313,11 +313,11 @@ def write_evaluation(evaluation_results, file_name, config_name):
     # write content
     with open(file_name, 'a') as f:
         fcntl.flock(f, fcntl.LOCK_EX)
-        for (data_set, evaluation) in evaluation_results.iteritems():
+        for (data_set, evaluation) in evaluation_results.items():
             line = "{0},{1},".format(config_name, data_set)
-            for (name, result) in evaluation.iteritems():
+            for (name, result) in evaluation.items():
                 if name=="label_wise_hit_rate":
-                    for (label, hit_rate) in result.iteritems():
+                    for (label, hit_rate) in result.items():
                         line += "{0},".format(hit_rate)
                 else:
                     line += "{0},".format(result)

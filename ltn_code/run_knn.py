@@ -16,7 +16,7 @@ random.seed(42)
 
 
 # parse command line arguments
-if sys.argv < 4:
+if len(sys.argv) < 4:
     raise Exception("Need three arguments: 'python run_ltn.py config.cfg config_name k'")
 config_file_name = sys.argv[1]
 config_name = sys.argv[2]
@@ -43,7 +43,7 @@ def get_predictions(classifier, concepts, data):
     probabilities = classifier.predict_proba(data)
     
     for i in range(len(probabilities)):
-        predictions[concepts[i]] = map(lambda x: x[1] if len(x) > 1 else x, probabilities[i])
+        predictions[concepts[i]] = list(map(lambda x: x[1] if len(x) > 1 else x, probabilities[i]))
 
     return predictions
 
