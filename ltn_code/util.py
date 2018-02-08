@@ -206,7 +206,7 @@ def exact_match_prefix(predictions, vectors):
     exact_match_prefix = (1.0 * count) / len(vectors)
     return exact_match_prefix
 
-def cross_entropy_loss(predictions, vectors):
+def cross_entropy_loss(predictions, vectors, all_labels):
     """Computes the cross entropy loss between the predictions and the ground truth labels.
     
     How close are the numeric scores to the values of 0 and 1? The lower, the better."""
@@ -216,12 +216,14 @@ def cross_entropy_loss(predictions, vectors):
     for (true_labels, vector) in vectors:
         
         for label in true_labels:
-            if predictions[label][idx] == 0:
+            if predictions[label][idx] == 0.0:
                 sum_of_cross_entropies -= 1000
             else:
                 sum_of_cross_entropies += log(predictions[label][idx], 2)
-        else:
-            if predictions[label][idx] == 0:
+        
+        false_labels = [label for label in all_labels if label not in true_labels]
+        for label in false_labels:
+            if predictions[label][idx] == 1.0:
                 sum_of_cross_entropies -= 1000
             else:
                 sum_of_cross_entropies += log(1.0 - predictions[label][idx], 2)
@@ -229,6 +231,67 @@ def cross_entropy_loss(predictions, vectors):
         idx += 1
     
     return (-1.0 * sum_of_cross_entropies) / len(vectors)
+
+def label_wise_hit_rate(predictions, vectors, all_labels):
+    """Computes for each label the percentage of times where it was ranked before the first invalid label.
+
+    Looks only at cases where the label was in the ground truth. The higher, the better."""   
+    
+    appearances = {}
+    hits = {}
+    for label in all_labels:
+        appearances[label] = 0.0
+        hits[label] = 0.0
+    idx = 0
+    for (true_labels, vector) in vectors:
+        filtered_predictions = []
+        for label, memberships in predictions.iteritems():
+            filtered_predictions.append((label, memberships[idx]))
+        filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
+        for label in true_labels:
+            appearances[label] += 1
+        for (label, membership) in filtered_predictions:
+            if label in true_labels:
+                hits[label] += 1
+            else:
+                break
+        idx += 1
+        
+    result = {}
+    for label in all_labels:
+        if appearances[label] == 0:
+            result[label] = None
+        else:
+            result[label] = (1.0 * hits[label]) / appearances[label]
+        
+    return result
+
+def evaluate(train_predictions, train_vectors, validation_predictions, validation_vectors, all_labels):
+    """Evaluate the predictions both on the training and the validation set."""
+    
+    # training data (to get an idea about overfitting)
+    print("\nTraining Data:")
+    print("--------------")
+    print("One error on training data: {0}".format(one_error(train_predictions, train_vectors)))
+    print("Coverage on training data: {0}".format(coverage(train_predictions, train_vectors)))
+    print("Ranking loss on training data: {0}".format(ranking_loss(train_predictions, train_vectors, all_labels)))
+    print("Average precision on training data: {0}".format(average_precision(train_predictions, train_vectors)))
+    print("Exact match prefix: {0}".format(exact_match_prefix(train_predictions, train_vectors)))
+    print("Cross entropy loss: {0}".format(cross_entropy_loss(train_predictions, train_vectors, all_labels)))
+    print("Label-wise hit rate: {0}".format(label_wise_hit_rate(train_predictions, train_vectors, all_labels)))
+    print(" ")
+    
+    # validation data (the stuff that matters)
+    print("\nValidation Data:")
+    print("----------------")
+    print("One error on validation data: {0}".format(one_error(validation_predictions, validation_vectors)))
+    print("Coverage on validation data: {0}".format(coverage(validation_predictions, validation_vectors)))
+    print("Ranking loss on validation data: {0}".format(ranking_loss(validation_predictions, validation_vectors, all_labels)))
+    print("Average precision on validation data: {0}".format(average_precision(validation_predictions, validation_vectors)))
+    print("Exact match prefix: {0}".format(exact_match_prefix(validation_predictions, validation_vectors)))
+    print("Cross entropy loss: {0}".format(cross_entropy_loss(validation_predictions, validation_vectors, all_labels)))
+    print("Label-wise hit rate: {0}".format(label_wise_hit_rate(validation_predictions, validation_vectors, all_labels)))
+    print(" ")
     
 
 
@@ -268,50 +331,48 @@ def label_density(vectors, all_labels):
     Label cardinality normalized by the total number of labels."""
     
     return (1.0 * label_cardinality(vectors)) / len(all_labels)
+
+def label_distribution(vectors, all_labels):
+    """Computes the distribution of labels for the given data set.
     
-def evaluate(train_predictions, train_vectors, validation_predictions, validation_vectors, all_labels):
-    """Evaluate the predictions both on the training and the validation set."""
+    How often do the labels occur percentage-wise in the data set?"""
     
-    # training data (to get an idea about overfitting)
-    print(" ")
-    print("TRAINING DATA")
-    print("=============")
-    print("")
-    print("Characteristics:")
-    print("----------------")
+    label_counter = {}
+    for label in all_labels:
+        label_counter[label] = 0
+    
+    for (true_labels, vector) in vectors:
+        for label in true_labels:
+            label_counter[label] += 1
+    
+    result = {}
+    for label in all_labels:
+        result[label] = (1.0 * label_counter[label]) / len(vectors)
+    
+    return result
+
+def data_set_characteristics(train_vectors, validation_vectors, test_vectors, all_labels):
+    print("\nTraining Data:")
+    print("--------------")
     print("Distinct label set: {0}".format(distinct_label_set(train_vectors)))
     print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(train_vectors)))
     print("Label cardinality: {0}".format(label_cardinality(train_vectors)))
     print("Label density: {0}".format(label_density(train_vectors, all_labels)))
-    print(" ")
-    print("Performance:")
-    print("------------")
-    print("One error on training data: {0}".format(one_error(train_predictions, train_vectors)))
-    print("Coverage on training data: {0}".format(coverage(train_predictions, train_vectors)))
-    print("Ranking loss on training data: {0}".format(ranking_loss(train_predictions, train_vectors, all_labels)))
-    print("Average precision on training data: {0}".format(average_precision(train_predictions, train_vectors)))
-    print("Exact match prefix: {0}".format(exact_match_prefix(train_predictions, train_vectors)))
-    print("Cross entropy loss: {0}".format(cross_entropy_loss(train_predictions, train_vectors)))
+    print("Label distribution: {0}".format(label_distribution(train_vectors, all_labels)))
     
-    # validation data (the stuff that matters)
-    print(" ")
-    print(" ")
-    print("VALIDATION DATA")
-    print("===============")
-    print("")
-    print("Characteristics:")
+    print("\nValidation Data:")
     print("----------------")
     print("Distinct label set: {0}".format(distinct_label_set(validation_vectors)))
     print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(validation_vectors)))
     print("Label cardinality: {0}".format(label_cardinality(validation_vectors)))
     print("Label density: {0}".format(label_density(validation_vectors, all_labels)))
-    print(" ")
-    print("Performance:")
-    print("------------")
-    print("One error on validation data: {0}".format(one_error(validation_predictions, validation_vectors)))
-    print("Coverage on validation data: {0}".format(coverage(validation_predictions, validation_vectors)))
-    print("Ranking loss on validation data: {0}".format(ranking_loss(validation_predictions, validation_vectors, all_labels)))
-    print("Average precision on validation data: {0}".format(average_precision(validation_predictions, validation_vectors)))
-    print("Exact match prefix: {0}".format(exact_match_prefix(validation_predictions, validation_vectors)))
-    print("Cross entropy loss: {0}".format(cross_entropy_loss(validation_predictions, validation_vectors)))
+    print("Label distribution: {0}".format(label_distribution(validation_vectors, all_labels)))
+    
+    print("\nTest Data:")
+    print("----------")
+    print("Distinct label set: {0}".format(distinct_label_set(test_vectors)))
+    print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(test_vectors)))
+    print("Label cardinality: {0}".format(label_cardinality(test_vectors)))
+    print("Label density: {0}".format(label_density(test_vectors, all_labels)))
+    print("Label distribution: {0}".format(label_distribution(test_vectors, all_labels)))
     
