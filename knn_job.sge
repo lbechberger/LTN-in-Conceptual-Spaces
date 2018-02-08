@@ -1,0 +1,23 @@
+#!/bin/bash
+#$ -N knn
+#$ -l mem=2G
+#$ -pe default 2
+#$ -cwd
+#$ -o $HOME/store/sge-logs/
+#$ -e $HOME/store/sge-logs/
+#$ -t 1-30:50
+
+export PATH="$HOME/miniconda/bin:$PATH"
+rm /tmp/* -R -f 2> /dev/null
+
+source activate tensorflow-CS
+
+i=(( $SGE_TASK_ID ))
+end=(( $SGE_TASK_ID + $SGE_TASK_STEPSIZE ))
+while [ $i -lt $end ]; do
+	python ltn_code/run_knn.py $1 $2 $i -q
+done
+
+source deactivate tensorflow-CS
+
+rm /tmp/* -R -f 2> /dev/null

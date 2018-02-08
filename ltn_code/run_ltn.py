@@ -23,6 +23,8 @@ parser.add_argument('-t', '--type', default = 'original',
                     help = 'the type of LTN membership function to use')
 parser.add_argument('-p', '--plot', action="store_true",
                     help = 'plot the resulting concepts if space is 2D or 3D')
+parser.add_argument('-q', '--quiet', action="store_true",
+                    help = 'disables info output')                    
 parser.add_argument('config_file', help = 'the config file to use')
 parser.add_argument('config_name', help = 'the name of the configuration')
 args = parser.parse_args()
@@ -119,12 +121,13 @@ training_data = list(map(lambda x: x[1], config["training_vectors"]))
 feed_dict[conceptual_space.tensor] = training_data
 
 # print out some diagnostic information
-print("program arguments: {0}".format(args))
-print("number of concepts: {0}".format(len(concepts.keys())))
-print("number of rules: {0}".format(num_rules))
-print("number of training points: {0}".format(len(config["training_vectors"])))
-print("number of validation points: {0}".format(len(config["validation_vectors"])))
-print("number of test points: {0}".format(len(config["test_vectors"])))
+if not args.quiet:
+    print("program arguments: {0}".format(args))
+    print("number of concepts: {0}".format(len(concepts.keys())))
+    print("number of rules: {0}".format(num_rules))
+    print("number of training points: {0}".format(len(config["training_vectors"])))
+    print("number of validation points: {0}".format(len(config["validation_vectors"])))
+    print("number of test points: {0}".format(len(config["test_vectors"])))
 
 # knowledge base = set of all clauses (all of them should be optimized)
 KB = ltn.KnowledgeBase("ConceptualSpaceKB", rules, "")
@@ -133,14 +136,16 @@ init = tf.global_variables_initializer()
 sess = tf.Session()
 sess.run(init)
 sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
-print("initialization", sat_level)
+if not args.quiet:
+    print("initialization", sat_level)
 
 if ltn.default_type != "cuboid":
     # if first initialization was horrible: re-try until we get something reasonable
     while sat_level < 1e-10:
         sess.run(init)
         sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
-        print("initialization",sat_level)
+        if not args.quiet:
+            print("initialization",sat_level)
 print(0, " ------> ", sat_level)
 
 
@@ -148,7 +153,8 @@ print(0, " ------> ", sat_level)
 for i in range(config["max_iter"]):
     buf = KB.train(sess, feed_dict = feed_dict)
     sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
-    print(i + 1, " ------> ", sat_level)
+    if not args.quiet:
+        print(i + 1, " ------> ", sat_level)
     if sat_level > .99:
         break
 
@@ -161,15 +167,17 @@ training_memberships = {}
 for label, concept in concepts.items():
     validation_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:validation_data}))
     training_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:training_data}))
-    max_membership = max(validation_memberships[label])
-    min_membership = min(validation_memberships[label])
-    print("{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership))
+    if not args.quiet:
+        max_membership = max(validation_memberships[label])
+        min_membership = min(validation_memberships[label])
+        print("{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership))
 
 # compute evaluation measures 
 eval_results = {}
 eval_results['training'] = util.evaluate(training_memberships, config["training_vectors"], config["concepts"])
 eval_results['validation'] = util.evaluate(validation_memberships, config["validation_vectors"], config["concepts"])
-util.print_evaluation(eval_results)
+if not args.quiet:
+    util.print_evaluation(eval_results)
 util.write_evaluation(eval_results, "output/{0}-LTN.csv".format(args.config_file.split('.')[0]), args.config_name)
 
 #if ltn.default_type == 'cuboid':

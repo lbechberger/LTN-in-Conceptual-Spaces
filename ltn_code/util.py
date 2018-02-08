@@ -385,6 +385,7 @@ def label_distribution(vectors, all_labels):
 def data_set_characteristics(train_vectors, validation_vectors, test_vectors, all_labels):
     print("\nTraining Data:")
     print("--------------")
+    print("Size: {0}".format(len(train_vectors)))
     print("Distinct label set: {0}".format(distinct_label_set(train_vectors)))
     print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(train_vectors)))
     print("Label cardinality: {0}".format(label_cardinality(train_vectors)))
@@ -393,6 +394,7 @@ def data_set_characteristics(train_vectors, validation_vectors, test_vectors, al
     
     print("\nValidation Data:")
     print("----------------")
+    print("Size: {0}".format(len(validation_vectors)))
     print("Distinct label set: {0}".format(distinct_label_set(validation_vectors)))
     print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(validation_vectors)))
     print("Label cardinality: {0}".format(label_cardinality(validation_vectors)))
@@ -401,6 +403,7 @@ def data_set_characteristics(train_vectors, validation_vectors, test_vectors, al
     
     print("\nTest Data:")
     print("----------")
+    print("Size: {0}".format(len(test_vectors)))
     print("Distinct label set: {0}".format(distinct_label_set(test_vectors)))
     print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(test_vectors)))
     print("Label cardinality: {0}".format(label_cardinality(test_vectors)))
