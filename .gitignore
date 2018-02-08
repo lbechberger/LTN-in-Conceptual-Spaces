@@ -1,5 +1,7 @@
 # original Schockaert data
 data/Schockaert/raw
+# experiment outputs
+output/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
