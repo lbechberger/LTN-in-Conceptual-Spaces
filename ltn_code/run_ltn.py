@@ -199,9 +199,9 @@ util.write_evaluation(eval_results, "output/{0}-LTN.csv".format(args.config_file
 
 # visualize the results for 2D and 3D data
 if args.plot and config["num_dimensions"] == 2:
-    from pylab import cm
     import matplotlib
     matplotlib.use('TkAgg')
+    from pylab import cm
     import matplotlib.pyplot as plt
     
     fig = plt.figure(figsize=(16,10))
@@ -277,9 +277,9 @@ if args.plot and config["num_dimensions"] == 2:
 
 
 elif args.plot and config["num_dimensions"] == 3:
-    from pylab import cm
     import matplotlib
     matplotlib.use('TkAgg')
+    from pylab import cm
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
     
@@ -303,7 +303,7 @@ elif args.plot and config["num_dimensions"] == 3:
     
     # for each concept, create a colored scatter plot of all unlabeled data points
     counter = 1
-    for label, memberships in training_memberships.items():#validation_memberships.items():
+    for label, memberships in validation_memberships.items():
         colors = cm.jet(memberships)
         colmap = cm.ScalarMappable(cmap=cm.jet)
         colmap.set_array(memberships)
