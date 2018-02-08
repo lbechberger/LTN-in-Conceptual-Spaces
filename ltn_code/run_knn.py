@@ -17,7 +17,7 @@ random.seed(42)
 
 # parse command line arguments
 if sys.argv < 4:
-    raise Exception("Need two arguments: 'python run_ltn.py config.cfg config_name k'")
+    raise Exception("Need three arguments: 'python run_ltn.py config.cfg config_name k'")
 config_file_name = sys.argv[1]
 config_name = sys.argv[2]
 num_neighbors = int(sys.argv[3])
@@ -51,4 +51,8 @@ train_predictions = get_predictions(classifier, config["concepts"], training_dat
 validation_predictions = get_predictions(classifier, config["concepts"], validation_data)
 
 # evaluate the predictions
-util.evaluate(train_predictions, config["training_vectors"], validation_predictions, config["validation_vectors"], config["concepts"])
+eval_results = {}
+eval_results['training'] = util.evaluate(train_predictions, config["training_vectors"], config["concepts"])
+eval_results['validation'] = util.evaluate(validation_predictions, config["validation_vectors"], config["concepts"])
+util.print_evaluation(eval_results)
+util.write_evaluation(eval_results, "output/{0}-knn.csv".format(config_file_name.split('.')[0]), "{0}_k{1}".format(config_name, num_neighbors))

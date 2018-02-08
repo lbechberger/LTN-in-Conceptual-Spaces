@@ -8,6 +8,7 @@ Created on Mon Dec  4 12:19:52 2017
 """
 import ConfigParser
 from math import log
+import os, fcntl
 
 def parse_config_file(config_file_name, config_name):
     """Extracts all parameters of interest form the given config file."""
@@ -266,33 +267,63 @@ def label_wise_hit_rate(predictions, vectors, all_labels):
         
     return result
 
-def evaluate(train_predictions, train_vectors, validation_predictions, validation_vectors, all_labels):
-    """Evaluate the predictions both on the training and the validation set."""
+def evaluate(predictions, vectors, all_labels):
+    """Evaluate the predictions on the given data set."""
     
-    # training data (to get an idea about overfitting)
-    print("\nTraining Data:")
-    print("--------------")
-    print("One error on training data: {0}".format(one_error(train_predictions, train_vectors)))
-    print("Coverage on training data: {0}".format(coverage(train_predictions, train_vectors)))
-    print("Ranking loss on training data: {0}".format(ranking_loss(train_predictions, train_vectors, all_labels)))
-    print("Average precision on training data: {0}".format(average_precision(train_predictions, train_vectors)))
-    print("Exact match prefix: {0}".format(exact_match_prefix(train_predictions, train_vectors)))
-    print("Cross entropy loss: {0}".format(cross_entropy_loss(train_predictions, train_vectors, all_labels)))
-    print("Label-wise hit rate: {0}".format(label_wise_hit_rate(train_predictions, train_vectors, all_labels)))
-    print(" ")
+    result = {}
+    result['one_error'] = one_error(predictions, vectors)
+    result['coverage'] = coverage(predictions, vectors)
+    result['ranking_loss'] = ranking_loss(predictions, vectors, all_labels)
+    result['average_precision'] = average_precision(predictions, vectors)
+    result['exact_match_prefix'] = exact_match_prefix(predictions, vectors)
+    result['cross_entropy_loss'] = cross_entropy_loss(predictions, vectors, all_labels)
+    result['label_wise_hit_rate'] = label_wise_hit_rate(predictions, vectors, all_labels)
     
-    # validation data (the stuff that matters)
-    print("\nValidation Data:")
-    print("----------------")
-    print("One error on validation data: {0}".format(one_error(validation_predictions, validation_vectors)))
-    print("Coverage on validation data: {0}".format(coverage(validation_predictions, validation_vectors)))
-    print("Ranking loss on validation data: {0}".format(ranking_loss(validation_predictions, validation_vectors, all_labels)))
-    print("Average precision on validation data: {0}".format(average_precision(validation_predictions, validation_vectors)))
-    print("Exact match prefix: {0}".format(exact_match_prefix(validation_predictions, validation_vectors)))
-    print("Cross entropy loss: {0}".format(cross_entropy_loss(validation_predictions, validation_vectors, all_labels)))
-    print("Label-wise hit rate: {0}".format(label_wise_hit_rate(validation_predictions, validation_vectors, all_labels)))
-    print(" ")
+    return result
+
+def print_evaluation(evaluation_results):
+    """Print the evaluation results on all data sets."""
     
+    for data_set in evaluation_results.keys():
+        
+        print("\n{0}:".format(data_set))
+        print("-"*(len(data_set) + 1))
+        for (name, result) in evaluation_results[data_set].iteritems():
+            print("{0}: {1}".format(name, result))
+            
+def write_evaluation(evaluation_results, file_name, config_name):
+    """Write the evaluation results into a csv file."""
+
+    # write headline if necessary
+    if not os.path.exists(file_name):
+        with open(file_name, 'w') as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
+            f.write("config,data_set,")
+            for (data_set, evaluation) in evaluation_results.iteritems():
+                for (name, result) in evaluation.iteritems():
+                    if name=="label_wise_hit_rate":
+                        for (label, hit_rate) in result.iteritems():
+                            f.write("{0},".format(label))
+                    else:
+                        f.write("{0},".format(name))
+                f.write("\n")
+                break
+            fcntl.flock(f, fcntl.LOCK_UN)
+    
+    # write content
+    with open(file_name, 'a') as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        for (data_set, evaluation) in evaluation_results.iteritems():
+            line = "{0},{1},".format(config_name, data_set)
+            for (name, result) in evaluation.iteritems():
+                if name=="label_wise_hit_rate":
+                    for (label, hit_rate) in result.iteritems():
+                        line += "{0},".format(hit_rate)
+                else:
+                    line += "{0},".format(result)
+            line += "\n"
+            f.write(line)
+        fcntl.flock(f, fcntl.LOCK_UN)
 
 
 def distinct_label_set(vectors):

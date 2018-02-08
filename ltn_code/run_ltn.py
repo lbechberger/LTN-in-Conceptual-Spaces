@@ -140,7 +140,7 @@ if ltn.default_type != "cuboid":
     while sat_level < 1e-10:
         sess.run(init)
         sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
-        print "initialization",sat_level
+        print("initialization",sat_level)
 print(0, " ------> ", sat_level)
 
 
@@ -163,10 +163,14 @@ for label, concept in concepts.iteritems():
     training_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:training_data}))
     max_membership = max(validation_memberships[label])
     min_membership = min(validation_memberships[label])
-    print "{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership)
+    print("{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership))
 
 # compute evaluation measures 
-util.evaluate(training_memberships, config["training_vectors"], validation_memberships, config["validation_vectors"], config["concepts"])
+eval_results = {}
+eval_results['training'] = util.evaluate(training_memberships, config["training_vectors"], config["concepts"])
+eval_results['validation'] = util.evaluate(validation_memberships, config["validation_vectors"], config["concepts"])
+util.print_evaluation(eval_results)
+util.write_evaluation(eval_results, "output/{0}-LTN.csv".format(args.config_file.split('.')[0]), args.config_name)
 
 #if ltn.default_type == 'cuboid':
 #    for label, concept in concepts.iteritems():
