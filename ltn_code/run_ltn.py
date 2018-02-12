@@ -174,6 +174,7 @@ for label, concept in concepts.items():
 
 # compute evaluation measures 
 eval_results = {}
+eval_results['contents'] = ['training', 'validation']
 eval_results['training'] = util.evaluate(training_memberships, config["training_vectors"], config["concepts"])
 eval_results['validation'] = util.evaluate(validation_memberships, config["validation_vectors"], config["concepts"])
 if not args.quiet:

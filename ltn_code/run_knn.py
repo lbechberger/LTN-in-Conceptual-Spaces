@@ -54,6 +54,7 @@ validation_predictions = get_predictions(classifier, config["concepts"], validat
 
 # evaluate the predictions
 eval_results = {}
+eval_results['contents'] = ['training', 'validation']
 eval_results['training'] = util.evaluate(train_predictions, config["training_vectors"], config["concepts"])
 eval_results['validation'] = util.evaluate(validation_predictions, config["validation_vectors"], config["concepts"])
 if not args.quiet:

@@ -259,11 +259,21 @@ def label_wise_hit_rate(predictions, vectors, all_labels):
         idx += 1
         
     result = {}
+    minimal_result = float("inf")
+    summed_result = 0
+    counter = 0
     for label in all_labels:
         if appearances[label] == 0:
             result[label] = None
         else:
             result[label] = (1.0 * hits[label]) / appearances[label]
+            minimal_result = min(minimal_result, result[label])
+            summed_result += result[label]
+            counter += 1
+
+    result['min'] = minimal_result
+    result['mean'] = (1.0 * summed_result) / counter
+    result['contents'] = ['min', 'mean'] + sorted(all_labels)
         
     return result
 
@@ -278,18 +288,25 @@ def evaluate(predictions, vectors, all_labels):
     result['exact_match_prefix'] = exact_match_prefix(predictions, vectors)
     result['cross_entropy_loss'] = cross_entropy_loss(predictions, vectors, all_labels)
     result['label_wise_hit_rate'] = label_wise_hit_rate(predictions, vectors, all_labels)
+    result['contents'] = ['one_error', 'coverage', 'ranking_loss', 'average_precision', 'exact_match_prefix', 'cross_entropy_loss', 'label_wise_hit_rate']
     
     return result
 
 def print_evaluation(evaluation_results):
     """Print the evaluation results on all data sets."""
     
-    for data_set in evaluation_results.keys():
+    for data_set in evaluation_results['contents']:
         
+        evaluation = evaluation_results[data_set]
         print("\n{0}:".format(data_set))
         print("-"*(len(data_set) + 1))
-        for (name, result) in evaluation_results[data_set].items():
-            print("{0}: {1}".format(name, result))
+        for name in evaluation['contents']:
+            if name == "label_wise_hit_rate":
+                print("label-wise hit rate:")
+                for label in evaluation[name]['contents']:
+                    print("{0}: {1}".format(label, evaluation[name][label]))
+            else:
+                print("{0}: {1}".format(name, evaluation_results[data_set][name]))
             
 def write_evaluation(evaluation_results, file_name, config_name):
     """Write the evaluation results into a csv file."""
@@ -299,28 +316,29 @@ def write_evaluation(evaluation_results, file_name, config_name):
         with open(file_name, 'w') as f:
             fcntl.flock(f, fcntl.LOCK_EX)
             f.write("config,data_set,")
-            for (data_set, evaluation) in evaluation_results.items():
-                for (name, result) in evaluation.items():
-                    if name=="label_wise_hit_rate":
-                        for (label, hit_rate) in result.items():
-                            f.write("{0},".format(label))
-                    else:
-                        f.write("{0},".format(name))
-                f.write("\n")
-                break
+            data_set = evaluation_results['contents'][0]
+            evaluation = evaluation_results[data_set]
+            for name in evaluation['contents']:
+                if name=="label_wise_hit_rate":
+                    for label in evaluation[name]['contents']:
+                        f.write("{0},".format(label))
+                else:
+                    f.write("{0},".format(name))
+            f.write("\n")
             fcntl.flock(f, fcntl.LOCK_UN)
     
     # write content
     with open(file_name, 'a') as f:
         fcntl.flock(f, fcntl.LOCK_EX)
-        for (data_set, evaluation) in evaluation_results.items():
+        for data_set in evaluation_results['contents']:
+            evaluation = evaluation_results[data_set]
             line = "{0},{1},".format(config_name, data_set)
-            for (name, result) in evaluation.items():
+            for name in evaluation['contents']:
                 if name=="label_wise_hit_rate":
-                    for (label, hit_rate) in result.items():
-                        line += "{0},".format(hit_rate)
+                    for label in evaluation[name]['contents']:
+                        line += "{0},".format(evaluation[name][label])
                 else:
-                    line += "{0},".format(result)
+                    line += "{0},".format(evaluation[name])
             line += "\n"
             f.write(line)
         fcntl.flock(f, fcntl.LOCK_UN)
