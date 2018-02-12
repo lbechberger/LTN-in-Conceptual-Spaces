@@ -12,8 +12,8 @@ rm /tmp/* -R -f 2> /dev/null
 
 source activate tensorflow-CS
 
-i=(( $SGE_TASK_ID ))
-end=(( $SGE_TASK_ID + $SGE_TASK_STEPSIZE ))
+i=$(( $SGE_TASK_ID ))
+end=$(( $SGE_TASK_ID + $SGE_TASK_STEPSIZE ))
 while [ $i -lt $end ]; do
 	python ltn_code/run_knn.py $1 $2 $i -q
 done
