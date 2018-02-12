@@ -5,7 +5,7 @@
 #$ -cwd
 #$ -o $HOME/store/sge-logs/
 #$ -e $HOME/store/sge-logs/
-#$ -t 1-30:50
+#$ -t 1-30:10
 
 export PATH="$HOME/miniconda/bin:$PATH"
 rm /tmp/* -R -f 2> /dev/null
@@ -16,6 +16,7 @@ i=$(( $SGE_TASK_ID ))
 end=$(( $SGE_TASK_ID + $SGE_TASK_STEPSIZE ))
 while [ $i -lt $end ]; do
 	python ltn_code/run_knn.py $1 $2 $i -q
+	i=$(( $i + 1 ))
 done
 
 source deactivate tensorflow-CS
