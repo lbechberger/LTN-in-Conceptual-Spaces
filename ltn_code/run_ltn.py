@@ -334,6 +334,10 @@ elif args.plot and config["num_dimensions"] == 3:
                      [p_min[c], p_min[c], p_max[c], p_max[c], p_min[c]],  # front
                      [p_min[c], p_min[c], p_max[c], p_max[c], p_min[c]]]  # back
                 
+                x = np.array(x)
+                y = np.array(y)
+                z = np.array(z)                
+                
                 return x, y, z
             
             p_min = sess.run(concepts[label].p_min)

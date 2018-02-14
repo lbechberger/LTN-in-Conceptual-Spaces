@@ -179,7 +179,7 @@ class Predicate:
             self.W = tf.matrix_band_part(tf.Variable(tf.random_normal([self.number_of_layers,
                                                   self.domain.columns+1,
                                                   self.domain.columns+1],stddev=0.5)),0,-1 ,
-                                 name = "W"+label)  # upper triangualr matrix
+                                 name = "W"+label)  # upper triangular matrix
             # modification by lbechberger: instead of using tf.ones, use tf.constant() to make sure that norm of u is ~5
             # (which in turn ensures that the membership function can reach values close to 0 and 1)
             self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
