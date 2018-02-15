@@ -1,5 +1,6 @@
 # original Schockaert data
 data/Schockaert/raw
+data/Schockaert-projected/raw
 # experiment outputs
 output/
 
