@@ -227,13 +227,13 @@ class Predicate:
             self.parameters = [tf.abs(tf.subtract(self.point_1, self.point_2))]
             
         elif self.ltn_type == "quadratic":
-            self.W = tf.Variable(tf.random_normal([self.number_of_layers,
-                                                  self.domain.columns+1,
-                                                  self.domain.columns+1],stddev=0.5))
+            self.W = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns, self.domain.columns], stddev = 0.5), name = "W"+label)
+            self.V = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns], stddev = 0.5), name = "V"+label)
+            self.b = tf.Variable(tf.random_normal([1,self.number_of_layers], stddev = 0.5), name = "b"+label)
             # modification by lbechberger: instead of using tf.ones, use tf.constant() to make sure that norm of u is ~5
             # (which in turn ensures that the membership function can reach values close to 0 and 1)
             self.u = tf.Variable(tf.constant(default_norm_of_u/self.number_of_layers, shape=[self.number_of_layers,1]), name = "u"+label)
-            self.parameters = [self.W]
+            self.parameters = [self.W, self.V, self.b]
             
         else:
             raise Exception("Unknown LTN type - cannot construct predicate")
@@ -292,11 +292,12 @@ class Predicate:
             result = tf.reduce_max(exp, axis=1)
             
         elif self.ltn_type == "quadratic":
-            X = tf.concat([tf.ones((tf.shape(domain.tensor)[0],1)), domain.tensor],1)
+            X = domain.tensor
             neg_semidefinite_weights = -1.0 * tf.matmul(self.W, self.W, transpose_a = True)
             XW = tf.matmul(tf.tile(tf.expand_dims(X, 0), [self.number_of_layers, 1, 1]), neg_semidefinite_weights)
-            XWX = tf.squeeze(tf.matmul(tf.expand_dims(X, 1), tf.transpose(XW, [1, 2, 0])),squeeze_dims=[1])
-            gX = tf.matmul(tf.tanh(XWX),self.u)
+            XWX = tf.squeeze(tf.matmul(tf.expand_dims(X, 1), tf.transpose(XW, [1, 2, 0])), squeeze_dims=[1])
+            XV = tf.matmul(X, tf.transpose(self.V))
+            gX = tf.matmul(tf.tanh(XWX + XV + self.b),self.u)            
             result = tf.sigmoid(gX,name=self.label+"_at_"+domain.label)
             
         else:
