@@ -39,15 +39,15 @@ def parse_config_file(config_file_name, config_name):
             else:
                 result[name] = buf
         
-    read_ltn_variable("ltn_layers", is_int = True)
-    read_ltn_variable("ltn_smooth_factor", is_float = True)     
-    read_ltn_variable("ltn_tnorm")
-    read_ltn_variable("ltn_aggregator")        
-    read_ltn_variable("ltn_optimizer")
-    read_ltn_variable("ltn_clauses_aggregator")
-    read_ltn_variable("ltn_positive_fact_penalty", is_float = True)
-    read_ltn_variable("ltn_norm_of_u", is_float = True)
-    read_ltn_variable("ltn_epsilon", is_float = True)
+    read_ltn_variable("layers", is_int = True)
+    read_ltn_variable("smooth_factor", is_float = True)     
+    read_ltn_variable("tnorm")
+    read_ltn_variable("aggregator")        
+    read_ltn_variable("optimizer")
+    read_ltn_variable("clauses_aggregator")
+    read_ltn_variable("positive_fact_penalty", is_float = True)
+    read_ltn_variable("norm_of_u", is_float = True)
+    read_ltn_variable("epsilon", is_float = True)
 
     for part in ["training", "validation", "test"]:
         result["{0}_vectors".format(part)] = parse_features_file("{0}{1}.csv".format(result["features_folder"], part), result["num_dimensions"])

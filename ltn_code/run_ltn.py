@@ -19,7 +19,7 @@ random.seed(42)
 
 # parse command line arguments
 parser = argparse.ArgumentParser(description='LTN in CS')
-parser.add_argument('-t', '--type', default = 'original',
+parser.add_argument('-t', '--type', default = None,
                     help = 'the type of LTN membership function to use')
 parser.add_argument('-p', '--plot', action="store_true",
                     help = 'plot the resulting concepts if space is 2D or 3D')
@@ -29,9 +29,8 @@ parser.add_argument('config_file', help = 'the config file to use')
 parser.add_argument('config_name', help = 'the name of the configuration')
 args = parser.parse_args()
 
-# parse the config file and set the LTN membership function type
+# parse the config file
 config = util.parse_config_file(args.config_file, args.config_name)
-ltn.default_type = args.type
 
 def set_ltn_variable(config, name, default):
     if name in config:
@@ -39,15 +38,20 @@ def set_ltn_variable(config, name, default):
     else:
         return default
 
-ltn.default_layers                  = set_ltn_variable(config, "ltn_layers", ltn.default_layers)
-ltn.default_smooth_factor           = set_ltn_variable(config, "ltn_smooth_factor", ltn.default_smooth_factor)
-ltn.default_tnorm                   = set_ltn_variable(config, "ltn_tnorm", ltn.default_tnorm)
-ltn.default_aggregator              = set_ltn_variable(config, "ltn_aggregator", ltn.default_aggregator)
-ltn.default_optimizer               = set_ltn_variable(config, "ltn_optimizer", ltn.default_optimizer)
-ltn.default_clauses_aggregator      = set_ltn_variable(config, "ltn_clauses_aggregator", ltn.default_clauses_aggregator)
-ltn.default_positive_fact_penality  = set_ltn_variable(config, "ltn_positive_fact_penalty", ltn.default_positive_fact_penality)
-ltn.default_norm_of_u               = set_ltn_variable(config, "ltn_norm_of_u", ltn.default_norm_of_u)
-ltn.default_epsilon                 = set_ltn_variable(config, "ltn_epsilon", ltn.default_epsilon)
+ltn.default_layers                  = set_ltn_variable(config, "layers", ltn.default_layers)
+ltn.default_smooth_factor           = set_ltn_variable(config, "smooth_factor", ltn.default_smooth_factor)
+ltn.default_tnorm                   = set_ltn_variable(config, "tnorm", ltn.default_tnorm)
+ltn.default_aggregator              = set_ltn_variable(config, "aggregator", ltn.default_aggregator)
+ltn.default_optimizer               = set_ltn_variable(config, "optimizer", ltn.default_optimizer)
+ltn.default_clauses_aggregator      = set_ltn_variable(config, "clauses_aggregator", ltn.default_clauses_aggregator)
+ltn.default_positive_fact_penality  = set_ltn_variable(config, "positive_fact_penalty", ltn.default_positive_fact_penality)
+ltn.default_norm_of_u               = set_ltn_variable(config, "norm_of_u", ltn.default_norm_of_u)
+ltn.default_epsilon                 = set_ltn_variable(config, "epsilon", ltn.default_epsilon)
+if args.type != None:
+    ltn.default_type = args.type
+else:
+    ltn.default_type = set_ltn_variable(config, "type", ltn.default_type)
+
 
 # create conceptual space
 conceptual_space = ltn.Domain(config["num_dimensions"], label="ConceptualSpace")
