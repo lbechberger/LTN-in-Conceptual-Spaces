@@ -23,8 +23,8 @@ parser.add_argument('-t', '--type', default = None,
                     help = 'the type of LTN membership function to use')
 parser.add_argument('-p', '--plot', action="store_true",
                     help = 'plot the resulting concepts if space is 2D or 3D')
-parser.add_argument('-q', '--quiet', action="store_true",
-                    help = 'disables info output')                    
+parser.add_argument('-q', '--quiet', action="store_true", help = 'disables info output')                    
+parser.add_argument('-e', '--early', action="store_true", help = 'Stop early (if 99% sat)')                    
 parser.add_argument('config_file', help = 'the config file to use')
 parser.add_argument('config_name', help = 'the name of the configuration')
 args = parser.parse_args()
@@ -156,56 +156,49 @@ if ltn.default_type != "cuboid":
 print(0, " ------> ", sat_level)
 
 
-# train for at most max_iter iterations (stop if we hit 99% satisfiability earlier)
-for i in range(config["max_iter"]):
+# train for at most max_iter iterations (stop if we hit 99% satisfiability earlier and flag set)
+max_iter = max(config['epochs'])
+if not args.quiet:
+    print("Epochs to check: {0}".format(config['epochs']))
+
+for i in range(max_iter):
     buf = KB.train(sess, feed_dict = feed_dict)
     sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
     if not args.quiet:
         print(i + 1, " ------> ", sat_level)
-    if sat_level > .99:
+    if sat_level > .99 and args.early:
         break
+    
+    if i + 1 in config['epochs']:
+        if not args.quiet:
+            print("\nResults After Epoch {0}".format(i+1))
+            print("===========================")
+        # evaluate the results: classify each of the test data points
+        validation_data = list(map(lambda x: x[1], config["validation_vectors"]))
+        validation_memberships = {}
+        training_memberships = {}
+        for label, concept in concepts.items():
+            validation_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:validation_data}))
+            training_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:training_data}))
+            if not args.quiet:
+                max_membership = max(validation_memberships[label])
+                min_membership = min(validation_memberships[label])
+                print("{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership))
+        
+        # compute evaluation measures 
+        eval_results = {}
+        eval_results['contents'] = ['training', 'validation']
+        eval_results['training'] = util.evaluate(training_memberships, config["training_vectors"], config["concepts"])
+        eval_results['validation'] = util.evaluate(validation_memberships, config["validation_vectors"], config["concepts"])
+        if not args.quiet:
+            util.print_evaluation(eval_results)
+        util.write_evaluation(eval_results, "output/{0}-LTN.csv".format(args.config_file.split('.')[0]), "{0}-ep{1}".format(args.config_name, i + 1))
 
-#KB.save(sess)  # save the result if needed
+        # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
+      
+        #KB.save(sess)  # save the result if needed
 
-# evaluate the results: classify each of the test data points
-validation_data = list(map(lambda x: x[1], config["validation_vectors"]))
-validation_memberships = {}
-training_memberships = {}
-for label, concept in concepts.items():
-    validation_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:validation_data}))
-    training_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:training_data}))
-    if not args.quiet:
-        max_membership = max(validation_memberships[label])
-        min_membership = min(validation_memberships[label])
-        print("{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership))
-
-# compute evaluation measures 
-eval_results = {}
-eval_results['contents'] = ['training', 'validation']
-eval_results['training'] = util.evaluate(training_memberships, config["training_vectors"], config["concepts"])
-eval_results['validation'] = util.evaluate(validation_memberships, config["validation_vectors"], config["concepts"])
-if not args.quiet:
-    util.print_evaluation(eval_results)
-util.write_evaluation(eval_results, "output/{0}-LTN.csv".format(args.config_file.split('.')[0]), args.config_name)
-
-#if ltn.default_type == 'cuboid':
-#    for label, concept in concepts.items():
-#        prot, first, second, p1, p2, p_min, p_max, c, weights = sess.run([concept.prototype, concept.first_vector, concept.second_vector, concept.point_1, concept.point_2, concept.p_min, concept.p_max, concept.c, concept.weights], feed_dict = {conceptual_space.tensor:training_data})
-#        print label
-#        print "prototype: {0}".format(prot)
-#        print "first_vector: {0}".format(first)
-#        print "second_vector: {0}".format(second)
-#        print "point_1: {0}".format(p1)
-#        print "point_2: {0}".format(p2)
-#        print "p_min: {0}".format(p_min)
-#        print "p_max: {0}".format(p_max)
-#        print "c: {0}".format(c)
-#        print "weights: {0}".format(weights)
-#        print " "
-
-# TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
-
-# visualize the results for 2D and 3D data
+# visualize the results for 2D and 3D data if flag is set
 if args.plot and config["num_dimensions"] == 2:
     import matplotlib
     matplotlib.use('TkAgg')

@@ -1,12 +1,81 @@
-Schockaert.cfg 20-d
-Schockaert.cfg 20-d
-Schockaert.cfg 20-d
-Schockaert.cfg 50-d
-Schockaert.cfg 50-d
-Schockaert.cfg 50-d
-Schockaert.cfg 100-d
-Schockaert.cfg 100-d
-Schockaert.cfg 100-d
-Schockaert.cfg 200-d
-Schockaert.cfg 200-d
-Schockaert.cfg 200-d
+aghmean-clhmean-po0.0001-sm1e-06
+aghmean-clhmean-po0.0001-sm1e-07
+aghmean-clhmean-po0.0001-sm1e-08
+aghmean-clhmean-po0.0001-sm1e-09
+aghmean-clhmean-po0.0001-sm1e-10
+aghmean-clhmean-po1e-05-sm1e-06
+aghmean-clhmean-po1e-05-sm1e-07
+aghmean-clhmean-po1e-05-sm1e-08
+aghmean-clhmean-po1e-05-sm1e-09
+aghmean-clhmean-po1e-05-sm1e-10
+aghmean-clhmean-po1e-06-sm1e-06
+aghmean-clhmean-po1e-06-sm1e-07
+aghmean-clhmean-po1e-06-sm1e-08
+aghmean-clhmean-po1e-06-sm1e-09
+aghmean-clhmean-po1e-06-sm1e-10
+aghmean-clhmean-po1e-07-sm1e-06
+aghmean-clhmean-po1e-07-sm1e-07
+aghmean-clhmean-po1e-07-sm1e-08
+aghmean-clhmean-po1e-07-sm1e-09
+aghmean-clhmean-po1e-07-sm1e-10
+aghmean-clmean-po0.0001-sm1e-06
+aghmean-clmean-po0.0001-sm1e-07
+aghmean-clmean-po0.0001-sm1e-08
+aghmean-clmean-po0.0001-sm1e-09
+aghmean-clmean-po0.0001-sm1e-10
+aghmean-clmean-po1e-05-sm1e-06
+aghmean-clmean-po1e-05-sm1e-07
+aghmean-clmean-po1e-05-sm1e-08
+aghmean-clmean-po1e-05-sm1e-09
+aghmean-clmean-po1e-05-sm1e-10
+aghmean-clmean-po1e-06-sm1e-06
+aghmean-clmean-po1e-06-sm1e-07
+aghmean-clmean-po1e-06-sm1e-08
+aghmean-clmean-po1e-06-sm1e-09
+aghmean-clmean-po1e-06-sm1e-10
+aghmean-clmean-po1e-07-sm1e-06
+aghmean-clmean-po1e-07-sm1e-07
+aghmean-clmean-po1e-07-sm1e-08
+aghmean-clmean-po1e-07-sm1e-09
+aghmean-clmean-po1e-07-sm1e-10
+agmean-clhmean-po0.0001-sm1e-06
+agmean-clhmean-po0.0001-sm1e-07
+agmean-clhmean-po0.0001-sm1e-08
+agmean-clhmean-po0.0001-sm1e-09
+agmean-clhmean-po0.0001-sm1e-10
+agmean-clhmean-po1e-05-sm1e-06
+agmean-clhmean-po1e-05-sm1e-07
+agmean-clhmean-po1e-05-sm1e-08
+agmean-clhmean-po1e-05-sm1e-09
+agmean-clhmean-po1e-05-sm1e-10
+agmean-clhmean-po1e-06-sm1e-06
+agmean-clhmean-po1e-06-sm1e-07
+agmean-clhmean-po1e-06-sm1e-08
+agmean-clhmean-po1e-06-sm1e-09
+agmean-clhmean-po1e-06-sm1e-10
+agmean-clhmean-po1e-07-sm1e-06
+agmean-clhmean-po1e-07-sm1e-07
+agmean-clhmean-po1e-07-sm1e-08
+agmean-clhmean-po1e-07-sm1e-09
+agmean-clhmean-po1e-07-sm1e-10
+agmean-clmean-po0.0001-sm1e-06
+agmean-clmean-po0.0001-sm1e-07
+agmean-clmean-po0.0001-sm1e-08
+agmean-clmean-po0.0001-sm1e-09
+agmean-clmean-po0.0001-sm1e-10
+agmean-clmean-po1e-05-sm1e-06
+agmean-clmean-po1e-05-sm1e-07
+agmean-clmean-po1e-05-sm1e-08
+agmean-clmean-po1e-05-sm1e-09
+agmean-clmean-po1e-05-sm1e-10
+agmean-clmean-po1e-06-sm1e-06
+agmean-clmean-po1e-06-sm1e-07
+agmean-clmean-po1e-06-sm1e-08
+agmean-clmean-po1e-06-sm1e-09
+agmean-clmean-po1e-06-sm1e-10
+agmean-clmean-po1e-07-sm1e-06
+agmean-clmean-po1e-07-sm1e-07
+agmean-clmean-po1e-07-sm1e-08
+agmean-clmean-po1e-07-sm1e-09
+agmean-clmean-po1e-07-sm1e-10
+

@@ -11,10 +11,12 @@
 export PATH="$HOME/miniconda/bin:$PATH"
 rm /tmp/* -R -f 2> /dev/null
 
+date
 source activate tensorflow-CS
 
 python -u ltn_code/run_ltn.py $1 $2
 
 source deactivate tensorflow-CS
+date
 
 rm /tmp/* -R -f 2> /dev/null

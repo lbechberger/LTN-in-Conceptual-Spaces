@@ -9,6 +9,7 @@ Created on Mon Dec  4 12:19:52 2017
 from configparser import RawConfigParser
 from math import log
 import os, fcntl
+import ast
 
 def parse_config_file(config_file_name, config_name):
     """Extracts all parameters of interest form the given config file."""
@@ -17,11 +18,21 @@ def parse_config_file(config_file_name, config_name):
     config.read(config_file_name)
     
     # general setup
+    def parse_range(key):
+        value = result[key]
+        parsed_value = ast.literal_eval(value)
+        if isinstance(parsed_value, list):
+            result[key] = parsed_value
+        else:
+            result[key] = [parsed_value]
+
     result["features_folder"] = config.get(config_name, "features_folder")
     result["concepts_file"] = config.get(config_name, "concepts_file")
     result["rules_file"] = config.get(config_name, "rules_file")
     result["num_dimensions"] = config.getint(config_name, "num_dimensions")
-    result["max_iter"] = config.getint(config_name, "max_iter")
+    result["epochs"] = config.get(config_name, "epochs")
+    parse_range('epochs')    
+
     
     # LTN setup
     def read_ltn_variable(name, is_int = False, is_float = False):
