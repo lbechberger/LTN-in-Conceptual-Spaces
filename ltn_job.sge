@@ -13,7 +13,7 @@ rm /tmp/* -R -f 2> /dev/null
 
 source activate tensorflow-CS
 
-python ltn_code/run_ltn.py $1 $2
+python -u ltn_code/run_ltn.py $1 $2
 
 source deactivate tensorflow-CS
 
