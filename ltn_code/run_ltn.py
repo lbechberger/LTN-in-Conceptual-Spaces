@@ -137,10 +137,10 @@ if not args.quiet:
 KB = ltn.KnowledgeBase("ConceptualSpaceKB", rules, "")
 # initialize LTN and TensorFlow
 init = tf.global_variables_initializer()
-config = tf.ConfigProto()
-config.gpu_options.allow_growth = True
+tf_config = tf.ConfigProto()
+tf_config.gpu_options.allow_growth = True
 
-sess = tf.Session(config=config)
+sess = tf.Session(config=tf_config)
 sess.run(init)
 sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
 if not args.quiet:
