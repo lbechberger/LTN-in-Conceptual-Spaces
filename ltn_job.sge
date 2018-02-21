@@ -3,7 +3,9 @@
 #$ -l mem=2G
 #$ -l cuda=1
 #$ -l cuda_cores=384
+#S -l nv_mem_free=500M
 #$ -pe default 2
+#$ -l h_rt=1:30:00
 #$ -cwd
 #$ -o $HOME/store/sge-logs/
 #$ -e $HOME/store/sge-logs/
@@ -14,7 +16,13 @@ rm /tmp/* -R -f 2> /dev/null
 date
 source activate tensorflow-CS
 
-python -u ltn_code/run_ltn.py $1 $2
+t=$(( $SGE_TASK_LAST - $SGE_TASK_ID + 2))
+params=$( tail -n $t $1 | head -n $SGE_TASK_STEPSIZE )
+
+for config in $params
+do
+	python -u ltn_code/run_ltn.py grid_search.cfg $config
+done
 
 source deactivate tensorflow-CS
 date
