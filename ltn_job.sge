@@ -7,8 +7,8 @@
 #$ -pe default 2
 #$ -l h_rt=1:30:00
 #$ -cwd
-#$ -o $HOME/store/sge-logs/
-#$ -e $HOME/store/sge-logs/
+#$ -o /dev/null
+#$ -e /dev/null
 
 export PATH="$HOME/miniconda/bin:$PATH"
 rm /tmp/* -R -f 2> /dev/null
