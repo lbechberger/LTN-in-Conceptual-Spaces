@@ -73,7 +73,7 @@ with open(config['rules_file'], 'r') as input_file:
 new_config_name = args.config_name + config_suffix
 config_parser = ConfigParser()
 config_parser.read(args.config_file)
-new_config = config_parser[args.config_name]
+new_config = dict(config_parser[args.config_name])
 
 new_config["concepts_file"] = new_concepts_file
 new_config["features_folder"] = new_features_folder
