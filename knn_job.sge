@@ -3,8 +3,8 @@
 #$ -l mem=2G
 #$ -pe default 2
 #$ -cwd
-#$ -o $HOME/store/sge-logs/
-#$ -e $HOME/store/sge-logs/
+#$ -o /dev/null
+#$ -e /dev/null
 #$ -t 1-7400:1
 
 export PATH="$HOME/miniconda/bin:$PATH"
