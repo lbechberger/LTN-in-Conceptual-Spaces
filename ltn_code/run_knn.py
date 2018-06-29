@@ -59,4 +59,4 @@ eval_results['training'] = util.evaluate(train_predictions, config["training_vec
 eval_results['validation'] = util.evaluate(validation_predictions, config["validation_vectors"], config["concepts"])
 if not args.quiet:
     util.print_evaluation(eval_results)
-util.write_evaluation(eval_results, "output/{0}-knn.csv".format(args.config_file.split('.')[0]), "{0}_k{1}".format(args.config_name, args.num_neighbors))
+util.write_evaluation(eval_results, "output/{0}_{1}-knn.csv".format(args.config_file.split('.')[0], args.config_name), "{0}_k{1}".format(args.config_name, args.num_neighbors))
