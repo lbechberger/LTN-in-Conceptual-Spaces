@@ -34,7 +34,7 @@ training_labels = MultiLabelBinarizer(config["concepts"]).fit_transform(training
 validation_data = np.array(list(map(lambda x: x[1], config["validation_vectors"])))
 
 # train and use kNN classifier
-classifier = KNeighborsClassifier(args.num_neighbors)
+classifier = KNeighborsClassifier(args.num_neighbors, n_jobs = -1)
 classifier.fit(training_data, training_labels)
 
 def get_predictions(classifier, concepts, data):

@@ -1,7 +1,7 @@
 #!/bin/bash
 #$ -N knn
 #$ -l mem=2G
-#$ -pe default 2
+#$ -pe default 4
 #$ -cwd
 #$ -o /dev/null
 #$ -e /dev/null
