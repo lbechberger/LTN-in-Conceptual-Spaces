@@ -13,7 +13,7 @@ sys.path.append("ltn_code/")
 import util
 
 # parse command line arguments
-parser = argparse.ArgumentParser(description='knn in CS')
+parser = argparse.ArgumentParser(description='remove classes')
 parser.add_argument('-q', '--quiet', action="store_true",
                     help = 'disables info output')                    
 parser.add_argument('config_file', help = 'the config file to use')
