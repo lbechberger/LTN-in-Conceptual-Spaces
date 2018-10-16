@@ -11,6 +11,9 @@ Created on Wed Dec  6 09:40:16 2017
 
 import sys, os, random
 
+# fix random seed to ensure reproducibility
+random.seed(42)
+
 input_file_name = sys.argv[1]
 train_percentage = float(sys.argv[2])
 validate_percentage = float(sys.argv[3])
