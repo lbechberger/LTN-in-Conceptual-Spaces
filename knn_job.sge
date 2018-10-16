@@ -5,7 +5,7 @@
 #$ -cwd
 #$ -o /dev/null
 #$ -e /dev/null
-#$ -t 1-7400:1
+#$ -t 1-2000:1
 
 export PATH="$HOME/miniconda/bin:$PATH"
 rm /tmp/* -R -f 2> /dev/null
