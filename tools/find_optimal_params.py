@@ -181,13 +181,6 @@ result.append(['correlations'])
 for line in corr_matrix:
     result.append(line)
 
-#for i in range (len(all_metrics)):
-#    first_metric = all_metrics[i]
-#    for j in range(i + 1, len(all_metrics)):
-#        second_metric = all_metrics[j]
-#        corr = numpy.corrcoef(raw_values[first_metric], raw_values[second_metric])[0][1]
-#        print("Correlation between '{0}' and '{1}': {2}".format(first_metric, second_metric, corr))
-
 # write everyting into the output file
 with open(output_filename, 'w', newline='') as f:
     writer = csv.writer(f, delimiter=',')
