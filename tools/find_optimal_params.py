@@ -24,6 +24,8 @@ reader = csv.DictReader(open(input_filename, newline=''), delimiter=',')
 to_minimize = ['one_error', 'coverage', 'ranking_loss', 'cross_entropy_loss']
 to_maximize = ['average_precision', 'exact_match_prefix', 'min', 'mean']
 
+all_metrics = to_minimize + to_maximize
+
 records = {}
 overall_optimal_values = {}
 overall_worst_values = {}
@@ -94,7 +96,7 @@ for line in reader:
 print("Read {0} rows.".format(rowcounter))
 
 header = ['config', 'data_set']
-for metric in (to_minimize + to_maximize):
+for metric in all_metrics:
     header.append(metric)
 header.append('comment')
 result = [header]
@@ -102,7 +104,7 @@ result = [header]
 # compute overall best and worst 
 optimum = ['BEST', data_set_to_analyze]
 worst = ['WORST', data_set_to_analyze]
-for metric in (to_minimize + to_maximize):
+for metric in all_metrics:
     optimum.append(overall_optimal_values[metric][0])
     worst.append(overall_worst_values[metric][0])
 
@@ -112,17 +114,17 @@ result.append(optimum)
 result.append(worst)
 
 # now look at the configurations that optimize the individual metrics
-for metric in (to_minimize + to_maximize):
+for metric in all_metrics:
     for opt_config in overall_optimal_values[metric][1]:
         result_record = [opt_config, data_set_to_analyze]
-        for m2 in (to_minimize + to_maximize):
+        for m2 in all_metrics:
             result_record.append(records[opt_config][m2])
         result_record.append(metric)
         result.append(result_record)
 
 # joint optimal param setting: first look at the percentiles
 percentiles = {}
-for metric in (to_minimize + to_maximize):
+for metric in all_metrics:
     if metric in to_minimize:
         percentages = [1,2,3,5]     # we want small values
     else:
@@ -156,10 +158,10 @@ for record_name, record in records.items():
     
     # build modified record for later output
     modified_record = [record_name, data_set_to_analyze]
-    for metric in (to_minimize + to_maximize):
+    for metric in all_metrics:
         modified_record.append(record[metric])
     # comment: overall score and individual scores
-    modified_record.append("{0}: [{1}]".format(str(overall_score), '-'.join(map(lambda x: str(x), local_scores))))
+    modified_record.append("{0}: [{1}]".format(overall_score, '-'.join(map(lambda x: str(x), local_scores))))
     
     heapq.heappush(priority_queue, (-overall_score, modified_record))
 
@@ -167,8 +169,28 @@ for record_name, record in records.items():
 for i in range(int(0.01 * len(records.keys()))):
     result.append(heapq.heappop(priority_queue)[1])
 
+# finally: compute correlations between the metrics
+overall_value_table = []
+for metric in all_metrics:
+    overall_value_table.append(raw_values[metric])
+
+corr_matrix = numpy.corrcoef(overall_value_table)
+
+result.append([])
+result.append(['correlations'])
+for line in corr_matrix:
+    result.append(line)
+
+#for i in range (len(all_metrics)):
+#    first_metric = all_metrics[i]
+#    for j in range(i + 1, len(all_metrics)):
+#        second_metric = all_metrics[j]
+#        corr = numpy.corrcoef(raw_values[first_metric], raw_values[second_metric])[0][1]
+#        print("Correlation between '{0}' and '{1}': {2}".format(first_metric, second_metric, corr))
+
 # write everyting into the output file
 with open(output_filename, 'w', newline='') as f:
     writer = csv.writer(f, delimiter=',')
     for record in result:
         writer.writerow(record)
+
