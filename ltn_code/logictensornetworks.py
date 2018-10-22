@@ -45,7 +45,7 @@ def apply_t_norm(literals, label="no_label"):
 def disjunction_of_literals(literals,label="no_label"):
     result = apply_t_norm(literals, label)
     if default_aggregator == "product":
-        return tf.reduce_prod(result,keep_dims=True,name=label)
+        return tf.reduce_prod(result,keep_dims=True,name=label) + 1e-10
     if default_aggregator == "mean":
         return tf.reduce_mean(result,keep_dims=True,name=label)
     if default_aggregator == "gmean":

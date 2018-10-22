@@ -86,12 +86,12 @@ for label in config["concepts"]:
     # it can happen that we don't have any positive examples; then: don't try to add a rule
     if len(pos_examples[label]) > 0:
         pos_domain = ltn.Domain(conceptual_space.columns, label = label + "_pos_ex")
-        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], pos_domain)], label="{0}Const".format(label), weight = len(pos_examples[label])))
+        rules.append(ltn.Clause([ltn.Literal(True, concepts[label], pos_domain)], label="{0}Const".format(label), weight = 1.0*len(pos_examples[label])))
         feed_dict[pos_domain.tensor] = pos_examples[label]
         
     if len(neg_examples[label]) > 0:    
         neg_domain = ltn.Domain(conceptual_space.columns, label = label + "_neg_ex")
-        rules.append(ltn.Clause([ltn.Literal(False, concepts[label], neg_domain)], label="{0}ConstNot".format(label), weight = len(neg_examples[label])))
+        rules.append(ltn.Clause([ltn.Literal(False, concepts[label], neg_domain)], label="{0}ConstNot".format(label), weight = 1.0*len(neg_examples[label])))
         feed_dict[neg_domain.tensor] = neg_examples[label]
 
 
