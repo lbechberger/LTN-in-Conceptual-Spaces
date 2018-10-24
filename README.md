@@ -72,10 +72,36 @@ Currently, the following types of rules are supported:
 * `FirstConcept DIFFERENT SecondConcept` ensures that there is only little overlap between the two given concepts.
 * `FirstConcept IMPLIES SecondConcept` ensures that the first concept is a subset of the second concept.
 
-## Running the program
+## Running the Label Counting
+The label counting baseline can be executed as follows:
+```
+python ltn_code/run_counting.py configFile.cfg configName
+```
+Here, `configFile.cfg` is the name of your configuration file and `configName` is the name of the configuration within that file that you would like to use. From this configuration, only the information about the data set is used (ignoring the feature vectors and taking only into account the label information), all LTN hyperparameters are ignored.
 
-When you've set up your input files and your configuration file, you can execute the program as follows:
+The program calculates the validity of 21 different rule types (1 rule type `A != B`, 4 rule types in the form of `A IMPLIES B` with negated and non-negated concepts, 8 rule types in the form of `(A AND B) IMPLIES C` with negated and non-negated concepts, and 8 rule types in the form of `A IMPLIES (B or C)` with negated and non-negated concepts) on the three data sets.
+Afterwards, for a set of different thresholds (0.7, 0.8, 0.9, 0.95, and 0.99), it removes all rules that have an accuracy of less than this threshold on either the training or the validation set. For the remaining rules, the average and minimum accuracy on the test set are computed.
+
+Information on the thresholds, on the average and minimum accuracy on the test set, and on the number of rules left are displayed on the console for each rule type individually.
+
+## Running the kNN
+
+The kNN baseline can be executed as follows:
+```
+python ltn_code/run_ltn.py configFile.cfg configName k
+```
+Here, `configFile.cfg` is the name of your configuration file and `configName` is the name of the configuration within that file that you would like to use. From this configuration, only the information about the data set is used, all LTN hyperparameters are ignored. Finally, the parameter `k` indicates the number of neighbors to use in the classification.
+
+The program trains a kNN classifier on the training set and evaluates it on the validation set. In the end, some evaluation metrics for both the training and the validation set are printed out. In addition, all the evaluation information displayed on the console is also written into a csv file in the `output` folder.
+
+## Running the LTN
+
+When you've set up your input files and your configuration file, you can execute the LTN as follows:
 ```
 python ltn_code/run_ltn.py configFile.cfg configName
 ```
-Here, `configFile.cfg` is the name of your configuration file and `configName` is the name of the configuration within that file that you would like to use (i.e., the specific experiment you would like to run). After initializing everything (which takes a couple of seconds), the script will display for each iteration the current satisfiability of the given constraints (both labeled data points and rules). In the end, some evaluation metrics for both the training and the validation set are printed out. Moreover, if your data has two or three dimensions, colored scatter plots are generated to illustrate the location of the learned concepts in the overall space.
+Here, `configFile.cfg` is the name of your configuration file and `configName` is the name of the configuration within that file that you would like to use (i.e., the specific experiment you would like to run).
+The program trains an LTN on the training set and evaluates it on the validation set. 
+
+After initializing everything (which takes a couple of seconds), the script will display for each iteration the current satisfiability of the given constraints (both labeled data points and rules). In the end, some evaluation metrics for both the training and the validation set are printed out. Moreover, if your data has two or three dimensions, colored scatter plots are generated to illustrate the location of the learned concepts in the overall space.
+In addition, all the evaluation information displayed on the console is also written into a csv file in the `output` folder.
