@@ -82,7 +82,7 @@ Here, `configFile.cfg` is the name of your configuration file and `configName` i
 The program calculates the validity of 21 different rule types (1 rule type `A != B`, 4 rule types in the form of `A IMPLIES B` with negated and non-negated concepts, 8 rule types in the form of `(A AND B) IMPLIES C` with negated and non-negated concepts, and 8 rule types in the form of `A IMPLIES (B or C)` with negated and non-negated concepts) on the three data sets.
 Afterwards, for a set of different thresholds (0.7, 0.8, 0.9, 0.95, and 0.99), it removes all rules that have an accuracy of less than this threshold on either the training or the validation set. For the remaining rules, the average and minimum accuracy on the test set are computed.
 
-Information on the thresholds, on the average and minimum accuracy on the test set, and on the number of rules left are displayed on the console for each rule type individually.
+Information on the thresholds, on the average and minimum accuracy on the test set, and on the number of rules left are displayed on the console for each rule type individually. Moreover, different output files are created: An overall csv file in the `output` folder contains the same information as is displayed on the console. Moreover, for each combination of rule type and desired threshold, an individual csv file is created in the `output/rules` folder that contains a list of all the extracted rules under this condition along with their individual performance on training, validation, and test set.
 
 ## Running the kNN
 
