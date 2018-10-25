@@ -44,8 +44,8 @@ for metric in to_maximize:
 rowcounter = 0
 
 for line in reader:
-    # only look at performance on data set of interest
-    if line['data_set'] == data_set_to_analyze:
+    # only look at performance on data set of interest, ignore rows with nans and 0 ranking loss (LTN collapsed)
+    if line['data_set'] == data_set_to_analyze and not numpy.isnan(float(line['cross_entropy_loss'])) and float(line['ranking_loss']) > 0:
         rowcounter += 1        
         
         # store for later        
@@ -165,8 +165,9 @@ for record_name, record in records.items():
     
     heapq.heappush(priority_queue, (-overall_score, modified_record))
 
-# take the 1% of configurations with the highest score
-for i in range(int(0.01 * len(records.keys()))):
+# take the configurations with the highest score - either top 20 or highest 1% (based on smaller number)
+limit = min(int(0.01 * len(records.keys())), 20)
+for i in range(limit):
     result.append(heapq.heappop(priority_queue)[1])
 
 # finally: compute correlations between the metrics

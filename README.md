@@ -118,6 +118,6 @@ This script selects a subset of hyperparameter configurations and outputs them (
 
 The hyperparmeter configurations are selected in two ways:
 * For each evaluation metric, the hyperparameter configuration achieving the optimal performance with respect to this metric is chosen.
-* Moreover, the script searches for hyperparameter configurations that achieve a good performance with respect to multiple metrics (measured by belonging to the top 1,2,3, and 5 percentile). A configuration gets 4 points for being in the 1 percentile, 3 points for belonging to the 2 percentile, etc. for each of the metrics. The 1% of configurations with the highest total score are chosen.
+* Moreover, the script searches for hyperparameter configurations that achieve a good performance with respect to multiple metrics (measured by belonging to the top 1,2,3, and 5 percentile). A configuration gets 4 points for being in the 1 percentile, 3 points for belonging to the 2 percentile, etc. for each of the metrics. The 1% of configurations with the highest total score are chosen (maximally 20 configurations in order to keep the resulting spreadsheet clean).
 
 In addition to the selected configurations, the output file also contains a row **BEST** which contains the best value for each of the metrics that was achieved by *any* configuration, and a row **WORST** which records the worst observed values for each configuration.
