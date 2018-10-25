@@ -88,7 +88,7 @@ Information on the thresholds, on the average and minimum accuracy on the test s
 
 The kNN baseline can be executed as follows:
 ```
-python ltn_code/run_ltn.py configFile.cfg configName k
+python ltn_code/run_knn.py configFile.cfg configName k
 ```
 Here, `configFile.cfg` is the name of your configuration file and `configName` is the name of the configuration within that file that you would like to use. From this configuration, only the information about the data set is used, all LTN hyperparameters are ignored. Finally, the parameter `k` indicates the number of neighbors to use in the classification.
 
@@ -105,3 +105,19 @@ The program trains an LTN on the training set and evaluates it on the validation
 
 After initializing everything (which takes a couple of seconds), the script will display for each iteration the current satisfiability of the given constraints (both labeled data points and rules). In the end, some evaluation metrics for both the training and the validation set are printed out. Moreover, if your data has two or three dimensions, colored scatter plots are generated to illustrate the location of the learned concepts in the overall space.
 In addition, all the evaluation information displayed on the console is also written into a csv file in the `output` folder.
+
+## Analyzing kNN and LTN results
+We have programmed a script to automatically analyze which hyperparameter configurations perform best on the training or validation set. It is applicable to both the kNN and the LTN classifications.
+This script can be executed as follows:
+```
+python tools/find_optimal_params.py input_csv_file data_set_to_analyze
+```
+Here, `input_csv_file` is the path to the csv output file created by either `run_knn.py` or `run_ltn.py`, and `data_set_to_analyze` should be set to either `training` or `validation`. 
+
+This script selects a subset of hyperparameter configurations and outputs them (together with their associated evaluation metric values) in a csv file located in the same directory as `input_csv_file`, using the same basic file name but with the `data_set_to_analyze` appended. So if you call the script like `python tools/find_optimal_params.py output/grid_search-LTN.csv validation`, the results will be stored in `output/grid_search-LTN_validation.csv`. 
+
+The hyperparmeter configurations are selected in two ways:
+* For each evaluation metric, the hyperparameter configuration achieving the optimal performance with respect to this metric is chosen.
+* Moreover, the script searches for hyperparameter configurations that achieve a good performance with respect to multiple metrics (measured by belonging to the top 1,2,3, and 5 percentile). A configuration gets 4 points for being in the 1 percentile, 3 points for belonging to the 2 percentile, etc. for each of the metrics. The 1% of configurations with the highest total score are chosen.
+
+In addition to the selected configurations, the output file also contains a row **BEST** which contains the best value for each of the metrics that was achieved by *any* configuration, and a row **WORST** which records the worst observed values for each configuration.
