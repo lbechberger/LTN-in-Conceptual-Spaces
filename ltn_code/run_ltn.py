@@ -173,30 +173,50 @@ for i in range(max_iter):
         if not args.quiet:
             print("\nResults After Epoch {0}".format(i+1))
             print("===========================")
+            
         # evaluate the results: classify each of the test data points
         validation_data = list(map(lambda x: x[1], config["validation_vectors"]))
         validation_memberships = {}
         training_memberships = {}
+        
+        all_memberships_identical = True
+        standard_membership = 9999
+        all_spreads_small = True
+        
         for label, concept in concepts.items():
             validation_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:validation_data}))
             training_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:training_data}))
             if not args.quiet:
                 max_membership = max(validation_memberships[label])
                 min_membership = min(validation_memberships[label])
-                print("{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, max_membership - min_membership))
-        
-        # compute evaluation measures 
-        eval_results = {}
-        eval_results['contents'] = ['training', 'validation']
-        eval_results['training'] = util.evaluate(training_memberships, config["training_vectors"], config["concepts"])
-        eval_results['validation'] = util.evaluate(validation_memberships, config["validation_vectors"], config["concepts"])
-        if not args.quiet:
-            util.print_evaluation(eval_results)
-        util.write_evaluation(eval_results, "output/{0}-LTN.csv".format(args.config_file.split('.')[0]), "{0}-ep{1}".format(args.config_name, i + 1))
 
-        # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
-      
-        #KB.save(sess)  # save the result if needed
+                spread = max_membership - min_membership
+                if spread > 1e-8:
+                    all_spreads_small = False
+                
+                if standard_membership == 9999:
+                    standard_membership = max_membership
+                if max_membership != standard_membership or min_membership != standard_membership:
+                    all_memberships_identical = False
+                
+                print("{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, spread))
+        
+        # if all memberships are identical (e.g., all 0.5 or all NaN), then there's no point in evaluating the system
+        if all_memberships_identical or all_spreads_small:
+            print("LTN has collapsed! not evaluating.")
+        else:
+            # compute evaluation measures 
+            eval_results = {}
+            eval_results['contents'] = ['training', 'validation']
+            eval_results['training'] = util.evaluate(training_memberships, config["training_vectors"], config["concepts"])
+            eval_results['validation'] = util.evaluate(validation_memberships, config["validation_vectors"], config["concepts"])
+            if not args.quiet:
+                util.print_evaluation(eval_results)
+            util.write_evaluation(eval_results, "output/{0}-LTN.csv".format(args.config_file.split('.')[0]), "{0}-ep{1}".format(args.config_name, i + 1))
+    
+            # TODO: auto-generate and check for rules (A IMPLIES B, A DIFFERENT B, etc.)
+          
+            #KB.save(sess)  # save the result if needed
 
 # visualize the results for 2D and 3D data if flag is set
 if args.plot and config["num_dimensions"] == 2:
