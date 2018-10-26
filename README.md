@@ -84,6 +84,17 @@ Afterwards, for a set of different thresholds (0.7, 0.8, 0.9, 0.95, and 0.99), i
 
 Information on the thresholds, on the average and minimum accuracy on the test set, and on the number of rules left are displayed on the console for each rule type individually. Moreover, different output files are created: An overall csv file in the `output` folder contains the same information as is displayed on the console. Moreover, for each combination of rule type and desired threshold, an individual csv file is created in the `output/rules` folder that contains a list of all the extracted rules under this condition along with their individual performance on training, validation, and test set.
 
+## Running the classification baselines
+We compare the classification performance to two simple baselines:
+- **constant**: This baseline predicts for all labels and for all data points always a membership value of 0.5
+- **distribution**: This baseline computes the frequency of the labels in the data set and uses these frequencies as a prediction for all data points.
+
+You can execute the baseline script as follows:
+```
+python ltn_code/run_baseline_classifiers.py configFile.cfg configName
+```
+The evaluation results are displayed on the console and additionally written into a csv file in the `output` folder.
+
 ## Running the kNN
 
 The kNN baseline can be executed as follows:
