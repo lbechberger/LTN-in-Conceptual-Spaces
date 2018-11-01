@@ -438,4 +438,82 @@ def data_set_characteristics(train_vectors, validation_vectors, test_vectors, al
     print("Label cardinality: {0}".format(label_cardinality(test_vectors)))
     print("Label density: {0}".format(label_density(test_vectors, all_labels)))
     print("Label distribution: {0}".format(label_distribution(test_vectors, all_labels)))
+
+
+# rule types we're interested in. "p" means "positive", "n" means "negative", 
+#"IMPL" means "implies", and "DIFF" means "is different from"
+rule_types = ['pIMPLp', 'pIMPLn', 'nIMPLp', 'nIMPLn',
+              'pANDpIMPLp', 'pANDpIMPLn', 'pANDnIMPLp', 'pANDnIMPLn', 'nANDpIMPLp', 'nANDpIMPLn', 'nANDnIMPLp', 'nANDnIMPLn',
+              'pIMPLpORp', 'pIMPLpORn', 'pIMPLnORp', 'pIMPLnORn', 'nIMPLpORp', 'nIMPLpORn', 'nIMPLnORp', 'nIMPLnORn',
+              'pDIFFp']
+
+# dicitionary mapping rule types to desired output string
+rule_strings = {'pIMPLp' : '{0} IMPLIES {1}', 'pIMPLn' : '{0} IMPLIES (NOT {1})', 
+                'nIMPLp' : '(NOT {0}) IMPLIES {1}', 'nIMPLn' : '(NOT {0}) IMPLIES (NOT {1})',
+                'pANDpIMPLp' : '{0} AND {1} IMPLIES {2}', 'pANDpIMPLn' : '{0} AND {1} IMPLIES (NOT {2})', 
+                'pANDnIMPLp' : '{0} AND (NOT {1}) IMPLIES {2}', 'pANDnIMPLn' : '{0} AND (NOT {1}) IMPLIES (NOT {2})', 
+                'nANDpIMPLp' : '(NOT {0}) AND {1} IMPLIES {2}', 'nANDpIMPLn' : '(NOT {0}) AND {1} IMPLIES (NOT {2})', 
+                'nANDnIMPLp' : '(NOT {0}) AND (NOT {1}) IMPLIES {2}', 'nANDnIMPLn' : '(NOT {0}) AND (NOT {1}) IMPLIES (NOT {2})',
+                'pIMPLpORp' : '{0} IMPLIES {1} OR {2}', 'pIMPLpORn' : '{0} IMPLIES {1} OR (NOT {2})', 
+                'pIMPLnORp' : '{0} IMPLIES (NOT {1}) OR {2}', 'pIMPLnORn' : '{0} IMPLIES (NOT {1}) OR (NOT {2})', 
+                'nIMPLpORp' : '(NOT {0}) IMPLIES {1} OR {2}', 'nIMPLpORn' : '(NOT {0}) IMPLIES {1} OR (NOT {2})', 
+                'nIMPLnORp' : '(NOT {0}) IMPLIES (NOT {1}) OR {2}', 'nIMPLnORn' : '(NOT {0}) IMPLIES (NOT {1}) OR (NOT {2})',
+                'pDIFFp' : '{0} DIFFERENT FROM {1}'}              
+
+# define names of output files
+summary_output_file_template = "output/{0}_{1}-rules_{2}.csv"
+rules_output_prefix_template = "output/rules_{2}/{0}-{1}"
+rules_output_template = "{0}-{1}-{2}.csv"
+
+def evaluate_rules(rules_dict, data_set, config, algorithm, quiet):
+
+    summary_output_file = summary_output_file_template.format(data_set, config, algorithm)
+    rules_output_prefix = rules_output_prefix_template.format(data_set, config, algorithm)
     
+    output_strings = ['rule_type,desired_threshold,training_threshold,num_rules,min_test_accuracy,avg_test_accuracy\n']
+
+    for rule_type, rule_instances in rules_dict.items():
+        for confidence_threshold in [0.7, 0.8, 0.9, 0.95, 0.99]:
+            # filter list of rules according to confidence_threshold
+            filtered_list = list(filter(lambda x: x[0][1] >= confidence_threshold and x[0][0] >= confidence_threshold, rule_instances))
+            if len(filtered_list) == 0:
+                if not quiet:
+                    print("Could not find rules of type {0} when trying to achieve {1} on validation set.".format(rule_type, confidence_threshold))
+                continue
+            
+            # compute threshold on training data as well as performance on test data
+            training_threshold = min(map(lambda x: x[0][0], filtered_list))
+            average_test_accuracy = sum(map(lambda x: x[0][2], filtered_list)) / len(filtered_list)
+            minimal_test_accuracy = min(map(lambda x: x[0][2], filtered_list))
+    
+            # print right away        
+            if not quiet:
+                print("Threshold for rules of type {0} when trying to achieve {1} on validation set: {2} " \
+                    "(leaving {3} rules, accuracy on test set: avg {4}, min {5})".format(rule_type, confidence_threshold, 
+                      training_threshold, len(filtered_list), average_test_accuracy, minimal_test_accuracy))
+            
+            # store for output into file
+            output_strings.append(",".join([rule_type, str(confidence_threshold), str(training_threshold), str(len(filtered_list)), 
+                                            str(minimal_test_accuracy), str(average_test_accuracy)]) + '\n')
+            
+            # write resulting rules into file
+            rules_file_name =  rules_output_template.format(rules_output_prefix, rule_type, confidence_threshold)
+            with open(rules_file_name, 'w') as f:
+                f.write("rule,training,validation,test\n")
+                for rule in filtered_list:
+                    if len(rule) == 3:
+                        rule_string = rule_strings[rule_type].format(rule[1], rule[2])
+                    elif len(rule) == 4:
+                        rule_string = rule_strings[rule_type].format(rule[1], rule[2], rule[3])
+                    else:
+                        raise(Exception("invalid length of rule information"))
+                    line = "{0},{1},{2},{3}\n".format(rule_string, rule[0][0], rule[0][1], rule[0][2])
+                    f.write(line)
+        
+        if not quiet:
+            print("")
+    
+    with open(summary_output_file, 'w') as f:
+        for line in output_strings:
+            f.write(line)    
+            

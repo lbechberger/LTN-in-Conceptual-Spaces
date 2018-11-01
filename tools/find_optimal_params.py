@@ -45,7 +45,7 @@ rowcounter = 0
 
 for line in reader:
     # only look at performance on data set of interest, ignore rows with nans and 0 ranking loss (LTN collapsed)
-    if line['data_set'] == data_set_to_analyze and not numpy.isnan(float(line['cross_entropy_loss'])) and float(line['ranking_loss']) > 0:
+    if line['data_set'] == data_set_to_analyze:
         rowcounter += 1        
         
         # store for later        
