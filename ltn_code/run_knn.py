@@ -32,6 +32,7 @@ training_data = np.array(list(map(lambda x: x[1], config["training_vectors"])))
 training_labels = np.array(list(map(lambda x: np.array(x[0]), config["training_vectors"])))
 training_labels = MultiLabelBinarizer(config["concepts"]).fit_transform(training_labels)
 validation_data = np.array(list(map(lambda x: x[1], config["validation_vectors"])))
+test_data = np.array(list(map(lambda x: x[1], config["test_vectors"])))
 
 # train and use kNN classifier
 classifier = KNeighborsClassifier(args.num_neighbors, n_jobs = -1)
@@ -51,12 +52,15 @@ def get_predictions(classifier, concepts, data):
 
 train_predictions = get_predictions(classifier, config["concepts"], training_data)
 validation_predictions = get_predictions(classifier, config["concepts"], validation_data)
+test_predictions = get_predictions(classifier, config["concepts"], test_data)
 
 # evaluate the predictions
 eval_results = {}
-eval_results['contents'] = ['training', 'validation']
+eval_results['contents'] = ['training', 'validation', 'test']
 eval_results['training'] = util.evaluate(train_predictions, config["training_vectors"], config["concepts"])
 eval_results['validation'] = util.evaluate(validation_predictions, config["validation_vectors"], config["concepts"])
+eval_results['test'] = util.evaluate(test_predictions, config["test_vectors"], config["concepts"])
+
 if not args.quiet:
     util.print_evaluation(eval_results)
 util.write_evaluation(eval_results, "output/{0}_{1}-knn.csv".format(args.config_file.split('.')[0], args.config_name), "{0}_k{1}".format(args.config_name, args.num_neighbors))
