@@ -276,7 +276,7 @@ for i in range(max_iter):
                 
                 rule_results = {}
                 util.clause_results_to_rule_results(clause_results, rule_results)
-                util.evaluate_rules(rule_results, args.config_file.split('.')[0], args.config_name, 'LTN', args.quiet)
+                util.evaluate_rules(rule_results, args.config_file.split('.')[0], "{0}_ep{1}".format(args.config_name, i + 1), 'LTN', args.quiet)
                 
 # visualize the results for 2D and 3D data if flag is set
 if args.plot and config["num_dimensions"] == 2:
