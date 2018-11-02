@@ -158,8 +158,9 @@ for record_name, record in records.items():
     
     # build modified record for later output
     modified_record = [record_name, data_set_to_analyze]
-    for metric in all_metrics:
-        modified_record.append(record[metric])
+    modified_record.append(record)
+#    for metric in all_metrics:
+#        modified_record.append(record[metric])
     # comment: overall score and individual scores
     modified_record.append("{0}: [{1}]".format(overall_score, '-'.join(map(lambda x: str(x), local_scores))))
     
@@ -167,8 +168,44 @@ for record_name, record in records.items():
 
 # take the configurations with the highest score - either top 20 or highest 1% (based on smaller number)
 limit = min(int(0.01 * len(records.keys())), 20)
+combination_candidates = []
 for i in range(limit):
-    result.append(heapq.heappop(priority_queue)[1])
+    combination_candidates.append(heapq.heappop(priority_queue)[1])
+
+# keep only the ones which are not dominated by any other configuration in this selection
+should_be_kept = [True]*(len(combination_candidates))
+for idx, candidate_1 in enumerate(combination_candidates):
+    is_dominated = False
+    
+    for candidate_2 in combination_candidates:  
+        if candidate_1 == candidate_2:
+            continue
+        
+        two_dominates_one = True
+        for metric in to_minimize:
+            if candidate_1[2][metric] < candidate_2[2][metric]:
+                two_dominates_one = False
+                break
+
+        for metric in to_maximize:
+            if candidate_1[2][metric] > candidate_2[2][metric]:
+                two_dominates_one = False
+                break
+        
+        if two_dominates_one:
+            is_dominated = True
+            break
+        
+    if is_dominated:
+        should_be_kept[idx] = False
+        
+for idx, candidate in enumerate(combination_candidates):
+    if should_be_kept[idx]:
+        output_record = candidate[0:2]
+        for metric in all_metrics:
+            output_record.append(candidate[2][metric])
+        output_record.append(candidate[-1])
+        result.append(output_record)                
 
 # finally: compute correlations between the metrics
 overall_value_table = []
