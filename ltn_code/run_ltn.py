@@ -278,23 +278,6 @@ for i in range(max_iter):
                 util.clause_results_to_rule_results(clause_results, rule_results)
                 util.evaluate_rules(rule_results, args.config_file.split('.')[0], args.config_name, 'LTN', args.quiet)
                 
-            # check for rules
-#            rule_results = {}
-#            for rule_type, vectors in generated_rules.items():
-#                
-#                tensors = list(map(lambda x: x[0], vectors))
-#                training_results = np.squeeze(sess.run(tensors, {conceptual_space.tensor:training_data}))
-#                validation_results = np.squeeze(sess.run(tensors, {conceptual_space.tensor:validation_data}))
-#                test_results = np.squeeze(sess.run(tensors, {conceptual_space.tensor:test_data}))
-#                
-#                local_results = []
-#                for idx, entry in enumerate(vectors):
-#                    local_results.append([[training_results[idx], validation_results[idx], test_results[idx]]] + entry[1:])
-#                
-#                rule_results[rule_type] = local_results
-#            
-#            util.evaluate_rules(rule_results, args.config_file.split('.')[0], args.config_name, 'LTN', args.quiet)
-
 # visualize the results for 2D and 3D data if flag is set
 if args.plot and config["num_dimensions"] == 2:
     import matplotlib

@@ -111,11 +111,18 @@ When you've set up your input files and your configuration file, you can execute
 ```
 python ltn_code/run_ltn.py configFile.cfg configName
 ```
-Here, `configFile.cfg` is the name of your configuration file and `configName` is the name of the configuration within that file that you would like to use (i.e., the specific experiment you would like to run).
-The program trains an LTN on the training set and evaluates it on the validation set. 
 
-After initializing everything (which takes a couple of seconds), the script will display for each iteration the current satisfiability of the given constraints (both labeled data points and rules). In the end, some evaluation metrics for both the training and the validation set are printed out. Moreover, if your data has two or three dimensions, colored scatter plots are generated to illustrate the location of the learned concepts in the overall space.
-In addition, all the evaluation information displayed on the console is also written into a csv file in the `output` folder.
+The program trains an LTN on the training set and evaluates it on the validation and the test set. Evaluation results are stored in a csv file in the `output` folder.
+
+It takes the following arguments:
+- `configFile.cfg` is the name of your configuration file to use.
+- `configName` is the name of the configuration within that file that you would like to use (i.e., the specific experiment you would like to run).
+- `-t` or `--type`: If this flag is set, then the type of membership function to use is overwritten by the type given immediately after this flag.
+- `-p` or `--plot`: If this flag is set and if your data has two or three dimensions, colored scatter plots are generated to illustrate the location of the learned concepts in the overall space.
+- `-q` or `--quiet`: By default, the script prints the current satisfiability and the evaluation results on the terminal. If this flag is set, the output is reduced to a minimum.
+- `-e` or `--early`: If this flag is set, then the LTN will stop training after reaching a satisfiability of `0.99`. Otherwise it will continue training until the number of epochs specified in the configuration is reached.
+- `-r` or `--rules`: If this flag is set, then in each evaluation step the LTN tries to extract rules from the learned membership functions.
+
 
 ## Analyzing kNN and LTN results
 We have programmed a script to automatically analyze which hyperparameter configurations perform best on the training or validation set. It is applicable to both the kNN and the LTN classifications.
