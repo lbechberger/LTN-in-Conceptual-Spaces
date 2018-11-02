@@ -11,10 +11,11 @@ import numpy as np
 
 import re, random, argparse
 from math import sqrt, isnan
+import itertools
 
 import util
 
-# fix random seed to ensure reproducibility
+# fix random seed to ensure reproducibility with respect to usage of negative labels
 random.seed(42)
 
 # parse command line arguments
@@ -24,7 +25,8 @@ parser.add_argument('-t', '--type', default = None,
 parser.add_argument('-p', '--plot', action="store_true",
                     help = 'plot the resulting concepts if space is 2D or 3D')
 parser.add_argument('-q', '--quiet', action="store_true", help = 'disables info output')                    
-parser.add_argument('-e', '--early', action="store_true", help = 'Stop early (if 99% sat)')                    
+parser.add_argument('-e', '--early', action="store_true", help = 'Stop early (if 99% sat)')  
+parser.add_argument('-r', '--rules', action="store_true", help = 'Extract rules from the LTN')                  
 parser.add_argument('config_file', help = 'the config file to use')
 parser.add_argument('config_name', help = 'the name of the configuration')
 args = parser.parse_args()
@@ -76,15 +78,15 @@ for labels, vec in config["training_vectors"]:
 
 # create concepts as predicates and create classification rules
 concepts = {}
-pos_literals = {}
-neg_literals = {}
+literals = {}
 rules = []
 feed_dict = {}
 for label in config["concepts"]:
     
     concepts[label] = ltn.Predicate(label, conceptual_space, data_points = pos_examples[label])
-    pos_literals[label] = ltn.Literal(True, concepts[label], conceptual_space)
-    neg_literals[label] = ltn.Literal(False, concepts[label], conceptual_space)
+    pos_literal = ltn.Literal(True, concepts[label], conceptual_space)
+    neg_literal = ltn.Literal(False, concepts[label], conceptual_space)
+    literals[label] = {True: pos_literal, False: neg_literal}
     
     # it can happen that we don't have any positive examples; then: don't try to add a rule
     if len(pos_examples[label]) > 0:
@@ -109,7 +111,7 @@ with open(config["rules_file"], 'r') as f:
             left = matches[0][0]
             right = matches[0][1]
             # 'left IMPLIES right' <--> '(NOT left) OR right'
-            rules.append(ltn.Clause([neg_literals[left], pos_literals[right]], label = "{0}I{1}".format(left, right)))
+            rules.append(ltn.Clause([literals[left][False], literals[right][True]], label = "{0}I{1}".format(left, right)))
             num_rules += 1
         else:
             matches = different_concepts_rule.findall(line)
@@ -117,96 +119,38 @@ with open(config["rules_file"], 'r') as f:
                 left = matches[0][0]
                 right = matches[0][1]
                 # 'left DIFFERENT right' <--> 'NOT (left AND right)' <--> (NOT left) OR (NOT right)'
-                rules.append(ltn.Clause([neg_literals[left], neg_literals[right]], label = "{0}DC{1}".format(left, right)))
+                rules.append(ltn.Clause([literals[left][False], literals[right][True]], label = "{0}DC{1}".format(left, right)))
                 num_rules += 1
 
-# dictionary for the confidence values extracted from the data set
-# maps from rule type to a list containing rules and their confidence
-generated_rules = { }
-for rule_type in util.rule_types:
-    generated_rules[rule_type] = []
-
-for first_concept in config["concepts"]:
-    print(first_concept)
-    for idx_2, second_concept in enumerate(config["concepts"]):  
-        if first_concept == second_concept:
-            continue
-        print("\t"+second_concept)
-        tensor_list = []                    
-
-        # first_concept IMPLIES second_concept = (NOT first_concept) OR second_concept
-        p_impl_p_tensor = ltn.Clause([neg_literals[first_concept], pos_literals[second_concept]], 
-                                        label = "{0}I{1}".format(first_concept, second_concept)).tensor
-        generated_rules['pIMPLp'].append([p_impl_p_tensor, first_concept, second_concept])
+# only extract rules if explicitly asked for
+if args.rules:
         
-        # first_concept IMPLIES (NOT second_concept)
-        p_impl_n_tensor = ltn.Clause([neg_literals[first_concept], neg_literals[second_concept]], 
-                                        label = "{0}IN{1}".format(first_concept, second_concept)).tensor
-        generated_rules['pIMPLn'].append([p_impl_n_tensor, first_concept, second_concept])
-                                        
-        # (NOT first_concept) IMPLIES second_concept     
-        n_impl_p_tensor = ltn.Clause([pos_literals[first_concept], pos_literals[second_concept]], 
-                                        label = "N{0}I{1}".format(first_concept, second_concept)).tensor
-        generated_rules['nIMPLp'].append([n_impl_p_tensor, first_concept, second_concept])
-                                        
-        # (NOT first_concept) IMPLIES (NOT second_concept)                                
-        n_impl_n_tensor = ltn.Clause([pos_literals[first_concept], neg_literals[second_concept]], 
-                                        label = "N{0}IN{1}".format(first_concept, second_concept)).tensor
-        generated_rules['nIMPLn'].append([n_impl_n_tensor, first_concept, second_concept])
-                                        
-                                     
-        for idx_3, third_concept in enumerate(config["concepts"]):
-            
-            if first_concept == third_concept or idx_3 <= idx_2:
-                continue
-            
-            # only look at OR rules here (can construct equivalent AND rules afterwards)
+    # list of clauses representing candidate rules
+    rule_clause_tensors = []
+    
+    # rules involving two concepts
+    for [first_concept, second_concept] in itertools.combinations(config["concepts"], 2):
+        
+        literal_values = itertools.product([True, False], repeat=2)
+        
+        for [first_val, second_val] in literal_values:
+            tensor = ltn.Clause([literals[first_concept][first_val], literals[second_concept][second_val]], 
+                                              label = "{0}{1}O{2}{3}".format(first_val, first_concept, 
+                                                        second_val, second_concept)).tensor
+            rule_clause_tensors.append([tensor, [first_concept, second_concept], [first_val, second_val]])
+    
+    # rules involving three concepts
+    for [first_concept, second_concept, third_concept] in itertools.combinations(config["concepts"], 3):
+        
+        literal_values = itertools.product([True, False], repeat=3)
+        
+        for [first_val, second_val, third_val] in literal_values:
+            tensor = ltn.Clause([literals[first_concept][first_val], literals[second_concept][second_val], 
+                                               literals[third_concept][third_val]], 
+                                              label = "{0}{1}O{2}{3}O{4}{5}".format(first_val, first_concept, 
+                                                        second_val, second_concept, third_val, third_concept)).tensor
+            rule_clause_tensors.append([tensor, [first_concept, second_concept, third_concept], [first_val, second_val, third_val]])
 
-            # first_concept IMPLIES second_concept OR third_concept 
-            # = (NOT first_concept) OR second_concept OR third_concept         
-            p_impl_p_or_p_tensor = ltn.Clause([neg_literals[first_concept], pos_literals[second_concept], pos_literals[third_concept]], 
-                                            label = "{0}I{1}O{2}".format(first_concept, second_concept, third_concept)).tensor
-            generated_rules['pIMPLpORp'].append([p_impl_p_or_p_tensor, first_concept, second_concept, third_concept])
-            
-            # first_concept IMPLIES second_concept OR (NOT third_concept)        
-            p_impl_p_or_n_tensor = ltn.Clause([neg_literals[first_concept], pos_literals[second_concept], neg_literals[third_concept]], 
-                                            label = "{0}I{1}ON{2}".format(first_concept, second_concept, third_concept)).tensor
-            generated_rules['pIMPLpORn'].append([p_impl_p_or_n_tensor, first_concept, second_concept, third_concept])
- 
-            # first_concept IMPLIES (NOT second_concept) OR third_concept        
-            p_impl_n_or_p_tensor = ltn.Clause([neg_literals[first_concept], neg_literals[second_concept], pos_literals[third_concept]], 
-                                            label = "{0}IN{1}O{2}".format(first_concept, second_concept, third_concept)).tensor
-            generated_rules['pIMPLnORp'].append([p_impl_n_or_p_tensor, first_concept, second_concept, third_concept])
- 
-            # first_concept IMPLIES (NOT second_concept) OR (NOT third_concept)        
-            p_impl_n_or_n_tensor = ltn.Clause([neg_literals[first_concept], neg_literals[second_concept], neg_literals[third_concept]], 
-                                            label = "{0}IN{1}ON{2}".format(first_concept, second_concept, third_concept)).tensor
-            generated_rules['pIMPLnORn'].append([p_impl_n_or_n_tensor, first_concept, second_concept, third_concept])
- 
-            # (NOT first_concept) IMPLIES second_concept OR third_concept        
-            n_impl_p_or_p_tensor = ltn.Clause([pos_literals[first_concept], pos_literals[second_concept], pos_literals[third_concept]], 
-                                            label = "N{0}I{1}O{2}".format(first_concept, second_concept, third_concept)).tensor
-            generated_rules['nIMPLpORp'].append([n_impl_p_or_p_tensor, first_concept, second_concept, third_concept])
- 
-            # (NOT first_concept) IMPLIES second_concept OR (NOT third_concept)        
-            n_impl_p_or_n_tensor = ltn.Clause([pos_literals[first_concept], pos_literals[second_concept], neg_literals[third_concept]], 
-                                            label = "N{0}I{1}ON{2}".format(first_concept, second_concept, third_concept)).tensor
-            generated_rules['nIMPLpORn'].append([n_impl_p_or_n_tensor, first_concept, second_concept, third_concept])
- 
-            # (NOT first_concept) IMPLIES (NOT second_concept) OR third_concept        
-            n_impl_n_or_p_tensor = ltn.Clause([pos_literals[first_concept], neg_literals[second_concept], pos_literals[third_concept]], 
-                                            label = "N{0}IN{1}O{2}".format(first_concept, second_concept, third_concept)).tensor
-            generated_rules['nIMPLnORp'].append([n_impl_n_or_p_tensor, first_concept, second_concept, third_concept])
- 
-            # (NOT first_concept) IMPLIES (NOT second_concept) OR (NOT third_concept)        
-            n_impl_n_or_n_tensor = ltn.Clause([pos_literals[first_concept], neg_literals[second_concept], neg_literals[third_concept]], 
-                                            label = "N{0}IN{1}ON{2}".format(first_concept, second_concept, third_concept)).tensor
-            generated_rules['nIMPLnORn'].append([n_impl_n_or_n_tensor, first_concept, second_concept, third_concept])
-
-# remove unnecessary entries
-for rule_type in util.rule_types:
-    if len(generated_rules[rule_type]) == 0:
-        del generated_rules[rule_type]
 
 # grab training, validation, and test data
 training_data = list(map(lambda x: x[1], config["training_vectors"]))
@@ -224,6 +168,8 @@ if not args.quiet:
     print("number of training points: {0}".format(len(config["training_vectors"])))
     print("number of validation points: {0}".format(len(config["validation_vectors"])))
     print("number of test points: {0}".format(len(config["test_vectors"])))
+    if args.rules:
+        print("Generated {0} candidate rules.".format(len(rule_clause_tensors)))
 
 # knowledge base = set of all clauses (all of them should be optimized)
 KB = ltn.KnowledgeBase("ConceptualSpaceKB", rules, "")
@@ -245,8 +191,9 @@ if ltn.default_type != "cuboid":
         sat_level = sess.run(KB.tensor, feed_dict = feed_dict)
         if not args.quiet:
             print("initialization",sat_level)
-print(0, " ------> ", sat_level)
 
+if not args.quiet:
+    print(0, " ------> ", sat_level)
 
 # train for at most max_iter iterations (stop if we hit 99% satisfiability earlier and flag set)
 max_iter = max(config['epochs'])
@@ -275,10 +222,19 @@ for i in range(max_iter):
         standard_membership = 9999
         all_spreads_small = True
         
-        for label, concept in concepts.items():
-            training_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:training_data}))
-            validation_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:validation_data}))
-            test_memberships[label] = np.squeeze(sess.run(concept.tensor(), {conceptual_space.tensor:test_data}))            
+        all_concept_tensors = []
+        for label in config["concepts"]:
+            all_concept_tensors.append(concepts[label].tensor())
+        
+        train_results = np.squeeze(sess.run(all_concept_tensors, {conceptual_space.tensor:training_data}))
+        valid_results = np.squeeze(sess.run(all_concept_tensors, {conceptual_space.tensor:validation_data}))
+        test_results = np.squeeze(sess.run(all_concept_tensors, {conceptual_space.tensor:test_data}))
+        
+        for idx, label in enumerate(config["concepts"]):
+            training_memberships[label] = train_results[idx]
+            validation_memberships[label] = valid_results[idx]
+            test_memberships[label] = test_results[idx]        
+            
             max_membership = max(validation_memberships[label])
             min_membership = min(validation_memberships[label])
 
@@ -307,22 +263,37 @@ for i in range(max_iter):
                 util.print_evaluation(eval_results)
             util.write_evaluation(eval_results, "output/{0}-LTN.csv".format(args.config_file.split('.')[0]), "{0}-ep{1}".format(args.config_name, i + 1))
     
+            # check for rules if asked to do so
+            if args.rules:
+                rule_tensors = list(map(lambda x: x[0], rule_clause_tensors))
+                training_results = np.squeeze(sess.run(rule_tensors, {conceptual_space.tensor:training_data}))
+                validation_results = np.squeeze(sess.run(rule_tensors, {conceptual_space.tensor:validation_data}))
+                test_results = np.squeeze(sess.run(rule_tensors, {conceptual_space.tensor:test_data}))
+                
+                all_data_results = list(zip(training_results, validation_results, test_results))
+                
+                clause_results = list(zip(all_data_results, list(map(lambda x: x[1:], rule_clause_tensors))))
+                
+                rule_results = {}
+                util.clause_results_to_rule_results(clause_results, rule_results)
+                util.evaluate_rules(rule_results, args.config_file.split('.')[0], args.config_name, 'LTN', args.quiet)
+                
             # check for rules
-            rule_results = {}
-            for rule_type, vectors in generated_rules.items():
-                
-                tensors = list(map(lambda x: x[0], vectors))
-                training_results = np.squeeze(sess.run(tensors, {conceptual_space.tensor:training_data}))
-                validation_results = np.squeeze(sess.run(tensors, {conceptual_space.tensor:validation_data}))
-                test_results = np.squeeze(sess.run(tensors, {conceptual_space.tensor:test_data}))
-                
-                local_results = []
-                for idx, entry in enumerate(vectors):
-                    local_results.append([[training_results[idx], validation_results[idx], test_results[idx]]] + entry[1:])
-                
-                rule_results[rule_type] = local_results
-            
-            util.evaluate_rules(rule_results, args.config_file.split('.')[0], args.config_name, 'LTN', args.quiet)
+#            rule_results = {}
+#            for rule_type, vectors in generated_rules.items():
+#                
+#                tensors = list(map(lambda x: x[0], vectors))
+#                training_results = np.squeeze(sess.run(tensors, {conceptual_space.tensor:training_data}))
+#                validation_results = np.squeeze(sess.run(tensors, {conceptual_space.tensor:validation_data}))
+#                test_results = np.squeeze(sess.run(tensors, {conceptual_space.tensor:test_data}))
+#                
+#                local_results = []
+#                for idx, entry in enumerate(vectors):
+#                    local_results.append([[training_results[idx], validation_results[idx], test_results[idx]]] + entry[1:])
+#                
+#                rule_results[rule_type] = local_results
+#            
+#            util.evaluate_rules(rule_results, args.config_file.split('.')[0], args.config_name, 'LTN', args.quiet)
 
 # visualize the results for 2D and 3D data if flag is set
 if args.plot and config["num_dimensions"] == 2:

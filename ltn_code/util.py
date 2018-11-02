@@ -10,6 +10,7 @@ from configparser import RawConfigParser
 from math import log
 import os, fcntl
 import ast
+import itertools
 
 def parse_config_file(config_file_name, config_name):
     """Extracts all parameters of interest form the given config file."""
@@ -465,6 +466,7 @@ summary_output_file_template = "output/{0}_{1}-rules_{2}.csv"
 rules_output_prefix_template = "output/rules_{2}/{0}-{1}"
 rules_output_template = "{0}-{1}-{2}.csv"
 
+# evaluate the validity of the given rules and document the output
 def evaluate_rules(rules_dict, data_set, config, algorithm, quiet):
 
     summary_output_file = summary_output_file_template.format(data_set, config, algorithm)
@@ -472,6 +474,9 @@ def evaluate_rules(rules_dict, data_set, config, algorithm, quiet):
     
     output_strings = ['rule_type,desired_threshold,training_threshold,num_rules,min_test_accuracy,avg_test_accuracy\n']
 
+    if not quiet:
+        print("\nRule evaluation")
+    
     for rule_type, rule_instances in rules_dict.items():
         for confidence_threshold in [0.7, 0.8, 0.9, 0.95, 0.99]:
             # filter list of rules according to confidence_threshold
@@ -516,4 +521,42 @@ def evaluate_rules(rules_dict, data_set, config, algorithm, quiet):
     with open(summary_output_file, 'w') as f:
         for line in output_strings:
             f.write(line)    
+
+# map clauses onto rules and convert the clause results accordingly
+def clause_results_to_rule_results(clause_results, rule_results):
+
+    true_false_map = {True:'p', False:'n'}
+
+    for rule_type in rule_types:
+        rule_results[rule_type] = []
+    
+    for [validities, config] in clause_results:
+        concepts = config[0]
+        literal_values = config[1]
+        
+        if len(concepts) == 2:
+            rule_type = '{0}IMPL{1}'.format(true_false_map[not literal_values[0]], true_false_map[literal_values[1]])
+            rule_results[rule_type].append([validities, concepts[0], concepts[1]])
+            if rule_type == 'pIMPLn':
+                rule_results['pDIFFp'].append([validities, concepts[0], concepts[1]])
+
+            rule_type = '{0}IMPL{1}'.format(true_false_map[not literal_values[1]], true_false_map[literal_values[0]])
+            rule_results[rule_type].append([validities, concepts[1], concepts[0]])
+            if rule_type == 'pIMPLn':
+                rule_results['pDIFFp'].append([validities, concepts[1], concepts[0]])
+                
+        elif len(concepts) == 3:
+            #  'pANDpIMPLp', 'pANDpIMPLn', 'pANDnIMPLp', 'pANDnIMPLn', 'nANDpIMPLp', 'nANDpIMPLn', 'nANDnIMPLp', 'nANDnIMPLn',
+            #  'pIMPLpORp', 'pIMPLpORn', 'pIMPLnORp', 'pIMPLnORn', 'nIMPLpORp', 'nIMPLpORn', 'nIMPLnORp', 'nIMPLnORn',
+            permutations = itertools.permutations([0,1,2])
+            for [x,y,z] in permutations:
+                rule_type_and = '{0}AND{1}IMPL{2}'.format(true_false_map[not literal_values[x]], true_false_map[not literal_values[y]], 
+                                                            true_false_map[literal_values[z]])
+                rule_results[rule_type_and].append([validities, concepts[x], concepts[y], concepts[z]])                                        
             
+                
+                rule_type_or = '{0}IMPL{1}OR{2}'.format(true_false_map[not literal_values[x]], true_false_map[literal_values[y]], 
+                                                            true_false_map[literal_values[z]])
+                rule_results[rule_type_or].append([validities, concepts[x], concepts[y], concepts[z]])    
+        else:
+            raise(Exception("invalid number of literals in rule clause!"))
