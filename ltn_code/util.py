@@ -302,7 +302,7 @@ def cross_entropy_loss(predictions, vectors, all_labels):
     return (-1.0 * sum_of_cross_entropies) / len(vectors)
 
 def label_wise_hit_rate(predictions, vectors, all_labels):
-    """Computes for each label the percentage of times where it was ranked before the first invalid label.
+    """Computes for each label the percentage of times where it was ranked not below the first invalid label.
 
     Looks only at cases where the label was in the ground truth. The higher, the better."""   
     
@@ -313,17 +313,19 @@ def label_wise_hit_rate(predictions, vectors, all_labels):
         hits[label] = 0.0
     idx = 0
     for (true_labels, vector) in vectors:
-        filtered_predictions = []
-        for label, memberships in predictions.items():
-            filtered_predictions.append((label, memberships[idx]))
-        filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
+        
+        grouped_predictions = get_sorted_grouped_predictions(predictions, idx)      
+
         for label in true_labels:
             appearances[label] += 1
-        for (label, membership) in filtered_predictions:
-            if label in true_labels:
+        
+        for (labels, membership) in grouped_predictions:
+            for label in [label for label in labels if label in true_labels]:
                 hits[label] += 1
-            else:
+            # if there's at least one label that's not part of the ground truth: stop looking
+            if len([label for label in labels if label not in true_labels]) > 0:
                 break
+            
         idx += 1
         
     result = {}
