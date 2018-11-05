@@ -12,6 +12,11 @@ import os, fcntl
 import ast
 import itertools
 
+###############
+# INPUT FILES #
+###############
+#------------------------------------------------------------------------------
+
 def parse_config_file(config_file_name, config_name):
     """Extracts all parameters of interest form the given config file."""
     result = {}
@@ -87,6 +92,33 @@ def parse_concepts_file(file_name):
             concepts.append(line.replace('\n','').replace('\r', ''))
     return concepts
 
+##############
+# EVALUATION #
+##############
+#------------------------------------------------------------------------------
+
+def get_sorted_grouped_predictions(predictions, idx):
+    """Helper function for getting all predictions for the example with the given index.
+    
+    Returns a list of [list of labels, confidence] pairs that is sorted in descending order based on the confidence."""
+
+    # group the labels together based on their predicted confidence
+    prediction_groups = {}
+    for label, memberships in predictions.items():
+        prediction = memberships[idx]
+        
+        if prediction in prediction_groups:
+            prediction_groups[prediction].append(label)
+        else:
+            prediction_groups[prediction] = [label]
+
+    # put into a list and sort in descending order based on membership
+    grouped_predictions = []    
+    for prediction, labels in prediction_groups.items():
+        grouped_predictions.append([labels, prediction])
+    grouped_predictions.sort(key = lambda x: x[1], reverse = True)
+    
+    return grouped_predictions
 
 def one_error(predictions, vectors):
     """Computes the one error for the given vectors and the given predictions. 
@@ -132,21 +164,7 @@ def coverage(predictions, vectors):
     summed_depth = 0
     for (true_labels, vector) in vectors:
         
-        # group the labels together based on their predicted confidence
-        prediction_groups = {}
-        for label, memberships in predictions.items():
-            prediction = memberships[idx]
-            
-            if prediction in prediction_groups:
-                prediction_groups[prediction].append(label)
-            else:
-                prediction_groups[prediction] = [label]
-
-        # put into a list and sort in descending order based on membership
-        grouped_predictions = []    
-        for prediction, labels in prediction_groups.items():
-            grouped_predictions.append([labels, prediction])
-        grouped_predictions.sort(key = lambda x: x[1], reverse = True)
+        grouped_predictions = get_sorted_grouped_predictions(predictions, idx)        
         
         depth = 0
         inner_idx = 0
@@ -195,21 +213,26 @@ def average_precision(predictions, vectors):
     summed_precision = 0
     count = 0
     for (true_labels, vector) in vectors:
-        filtered_predictions = []
-        for label, memberships in predictions.items():
-            filtered_predictions.append((label, memberships[idx]))
-        filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
-        filtered_predictions = list(map(lambda x: x[0], filtered_predictions))
+
+        grouped_predictions = get_sorted_grouped_predictions(predictions, idx)        
+                
         precision = 0
         
         for true_label in true_labels:
-            rank = filtered_predictions.index(true_label) + 1
-            if rank == 0:
-                precision += 1
-            else:
-                true_labels_before = len([label for label in true_labels if label in filtered_predictions[:rank]])
-                precision += (1.0 * true_labels_before) / rank
+            index_where_found = 0
+            true_labels_before = 0
+            rank = 0
+            while index_where_found < len(grouped_predictions):
+                current_labels = grouped_predictions[index_where_found][0]
+                true_labels_before += len([label for label in true_labels if label in current_labels])
+                rank += len(current_labels)
+                
+                if true_label in current_labels:
+                    break
+                index_where_found += 1
+                
             
+            precision += true_labels_before / rank            
         
         if len(true_labels) > 0:
             summed_precision += (1.0 * precision) / len(true_labels)
@@ -384,6 +407,11 @@ def write_evaluation(evaluation_results, file_name, config_name):
         fcntl.flock(f, fcntl.LOCK_UN)
 
 
+#######################
+# DATA SET PROPERTIES #
+#######################
+#------------------------------------------------------------------------------
+
 def distinct_label_set(vectors):
     """Computes the distinct label set of the given data set.
     
@@ -469,6 +497,11 @@ def data_set_characteristics(train_vectors, validation_vectors, test_vectors, al
     print("Label distribution: {0}".format(label_distribution(test_vectors, all_labels)))
 
 
+###################
+# RULE EXTRACTION #
+###################
+#------------------------------------------------------------------------------
+
 # rule types we're interested in. "p" means "positive", "n" means "negative", 
 #"IMPL" means "implies", and "DIFF" means "is different from"
 rule_types = ['pIMPLp', 'pIMPLn', 'nIMPLp', 'nIMPLn',
@@ -494,8 +527,8 @@ summary_output_file_template = "output/{0}_{1}-rules_{2}.csv"
 rules_output_prefix_template = "output/rules_{2}/{0}-{1}"
 rules_output_template = "{0}-{1}-{2}.csv"
 
-# evaluate the validity of the given rules and document the output
 def evaluate_rules(rules_dict, data_set, config, algorithm, quiet):
+    """Evaluates the validity of the rules given in the rules_dict and outputs them (both to console and files)."""
 
     summary_output_file = summary_output_file_template.format(data_set, config, algorithm)
     rules_output_prefix = rules_output_prefix_template.format(data_set, config, algorithm)
@@ -550,8 +583,8 @@ def evaluate_rules(rules_dict, data_set, config, algorithm, quiet):
         for line in output_strings:
             f.write(line)    
 
-# map clauses onto rules and convert the clause results accordingly
 def clause_results_to_rule_results(clause_results, rule_results):
+    """Automatically map clauses of two and three literals into logical rules and modify rule_results accordingly."""
 
     true_false_map = {True:'p', False:'n'}
 
