@@ -246,25 +246,30 @@ def average_precision(predictions, vectors):
 def exact_match_prefix(predictions, vectors):
     """Computes the exact match for the given vectors and the given predictions by looking at the highest ranked predictions.
     
-    If there are n ground truth labels, check whether the first n predictions are correct. The higher, the better."""
+    How often do we manage to put the ground truth labels on top of the list? The higher, the better.
+    If the ground truth is put in front of the false labels, but if there are some wrong predictions with the same 
+    confidence as the last correct prediction, then a value between 0 and 1 is used instead of a binary decision."""
     
     count = 0
     idx = 0
     for (true_labels, vector) in vectors:
-        n_labels = len(true_labels)
-        filtered_predictions = []
-        for label, memberships in predictions.items():
-            filtered_predictions.append((label, memberships[idx]))
-        filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
-        filtered_predictions = list(map(lambda x: x[0], filtered_predictions))[:n_labels]
         
-        equivalent = True
-        for pred in filtered_predictions:
-            if pred not in true_labels:
-                equivalent = False
-                break
-        if equivalent:
-            count += 1
+        grouped_predictions = get_sorted_grouped_predictions(predictions, idx)        
+        
+        inner_idx = 0
+        depth = 0
+        labels_to_find = list(true_labels)
+        number_of_incorrect_labels = 0
+        
+        while inner_idx < len(grouped_predictions) and len(labels_to_find) > 0 and number_of_incorrect_labels == 0:
+            current_labels = grouped_predictions[inner_idx][0]
+            depth += len(current_labels)            
+            number_of_incorrect_labels = len([label for label in current_labels if label not in labels_to_find])
+            labels_to_find = [label for label in labels_to_find if label not in current_labels]
+
+        if len(labels_to_find) == 0:
+            count += len(true_labels) / (len(true_labels) + number_of_incorrect_labels)
+
         idx += 1
     
     exact_match_prefix = (1.0 * count) / len(vectors)

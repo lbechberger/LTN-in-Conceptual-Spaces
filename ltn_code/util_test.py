@@ -68,7 +68,7 @@ class TestUtil(unittest.TestCase):
         predictions = {'A' : [1.0], 'B': [1.0], 'C': [0.0]}
         vectors = [('A', None)]
         exact_match_prefix = util.exact_match_prefix(predictions, vectors)
-        self.assertAlmostEqual(exact_match_prefix, 1)
+        self.assertAlmostEqual(exact_match_prefix, 0.5)
 
     def test_exact_match_prefix_continuous(self):
         exact_match_prefix = util.exact_match_prefix(self.continuous_predictions, self.vectors)
