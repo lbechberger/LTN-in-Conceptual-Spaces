@@ -221,6 +221,7 @@ for i in range(max_iter):
         all_memberships_identical = True
         standard_membership = 9999
         all_spreads_small = True
+        exists_nan_membership = False
         
         all_concept_tensors = []
         for label in config["concepts"]:
@@ -239,18 +240,22 @@ for i in range(max_iter):
             min_membership = min(validation_memberships[label])
 
             spread = max_membership - min_membership
-            if spread > 1e-8:
+            if spread > 1e-5:
                 all_spreads_small = False
             
             if standard_membership == 9999:
                 standard_membership = max_membership
             if max_membership != standard_membership or min_membership != standard_membership:
-                    all_memberships_identical = False
+                all_memberships_identical = False
+                
+            if isnan(max_membership) or isnan(min_membership):
+                exists_nan_membership = True
+                
             if not args.quiet: 
                 print("{0}: max {1} min {2} - diff {3}".format(label, max_membership, min_membership, spread))
         
         # if all memberships are identical (e.g., all 0.5 or all NaN), then there's no point in evaluating the system
-        if all_memberships_identical or all_spreads_small:
+        if all_memberships_identical or all_spreads_small or exists_nan_membership:
             print("LTN has collapsed! not evaluating.")
         else:
             # compute evaluation measures 
