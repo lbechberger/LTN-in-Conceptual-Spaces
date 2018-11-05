@@ -94,20 +94,33 @@ def one_error(predictions, vectors):
     How often is the highest-ranked prediction not in the ground-truth labels? The smaller, the better."""
     
     idx = 0
-    num_incorrect = 0
+    sum_of_local_one_errors = 0
     for (true_labels, vector) in vectors:
-        predicted_label = None
+        predicted_labels = []
         predicted_confidence = 0
         for label, memberships in predictions.items():
             conf = memberships[idx]
+            
             if conf > predicted_confidence:
+                # higher confidence than before: replace
                 predicted_confidence = conf
-                predicted_label = label
-        if predicted_label not in true_labels:
-            num_incorrect += 1
+                predicted_labels = [label]
+            elif conf == predicted_confidence:
+                # exact same confidence as before: add to list
+                predicted_labels.append(label)
+        
+        # what fraction of the highest ranked classes belongs to the ground truth?
+        local_one_error = 0
+        for predicted_label in predicted_labels:
+            if predicted_label not in true_labels:
+                local_one_error += 1
+        local_one_error /= len(predicted_labels)
+        
+        sum_of_local_one_errors += local_one_error
         idx += 1
     
-    one_error = (1.0 * num_incorrect) / len(vectors)
+    # average over all training examples
+    one_error = sum_of_local_one_errors / len(vectors)
     return one_error
 
 def coverage(predictions, vectors):
@@ -118,16 +131,31 @@ def coverage(predictions, vectors):
     idx = 0
     summed_depth = 0
     for (true_labels, vector) in vectors:
-        filtered_predictions = []
+        
+        # group the labels together based on their predicted confidence
+        prediction_groups = {}
         for label, memberships in predictions.items():
-            filtered_predictions.append((label, memberships[idx]))
-        filtered_predictions.sort(key = lambda x: x[1], reverse = True) # sort in descending order based on membership
+            prediction = memberships[idx]
+            
+            if prediction in prediction_groups:
+                prediction_groups[prediction].append(label)
+            else:
+                prediction_groups[prediction] = [label]
+
+        # put into a list and sort in descending order based on membership
+        grouped_predictions = []    
+        for prediction, labels in prediction_groups.items():
+            grouped_predictions.append([labels, prediction])
+        grouped_predictions.sort(key = lambda x: x[1], reverse = True)
+        
         depth = 0
+        inner_idx = 0
         labels_to_find = list(true_labels)
-        while depth < len(filtered_predictions) and len(labels_to_find) > 0:
-            if filtered_predictions[depth][0] in labels_to_find:
-                labels_to_find.remove(filtered_predictions[depth][0])
-            depth += 1
+        while inner_idx < len(grouped_predictions) and len(labels_to_find) > 0:
+            labels_to_find = [element for element in labels_to_find if element not in grouped_predictions[inner_idx][0]]
+            depth += len(grouped_predictions[inner_idx][0])
+            inner_idx += 1
+            
         summed_depth += depth
         idx += 1
     
@@ -175,7 +203,7 @@ def average_precision(predictions, vectors):
         precision = 0
         
         for true_label in true_labels:
-            rank = filtered_predictions.index(true_label)
+            rank = filtered_predictions.index(true_label) + 1
             if rank == 0:
                 precision += 1
             else:
