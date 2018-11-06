@@ -6,7 +6,6 @@
 #$ -o /dev/null
 #$ -e /dev/null
 #$ -t 1-2000:1
-#$ -l h=*cippy*
 
 export PATH="$HOME/miniconda/bin:$PATH"
 rm /tmp/* -R -f 2> /dev/null
