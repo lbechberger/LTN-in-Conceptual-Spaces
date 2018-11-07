@@ -248,7 +248,7 @@ def exact_match_prefix(predictions, vectors):
     
     How often do we manage to put the ground truth labels on top of the list? The higher, the better.
     If the ground truth is put in front of the false labels, but if there are some wrong predictions with the same 
-    confidence as the last correct prediction, then a value between 0 and 1 is used instead of a binary decision."""
+    confidence as the last correct prediction, then a value of 0 is used."""
     
     count = 0
     idx = 0
@@ -267,8 +267,8 @@ def exact_match_prefix(predictions, vectors):
             number_of_incorrect_labels = len([label for label in current_labels if label not in labels_to_find])
             labels_to_find = [label for label in labels_to_find if label not in current_labels]
 
-        if len(labels_to_find) == 0:
-            count += len(true_labels) / (len(true_labels) + number_of_incorrect_labels)
+        if len(labels_to_find) == 0 and number_of_incorrect_labels == 0:
+            count += 1
 
         idx += 1
     
@@ -302,7 +302,7 @@ def cross_entropy_loss(predictions, vectors, all_labels):
     return (-1.0 * sum_of_cross_entropies) / len(vectors)
 
 def label_wise_hit_rate(predictions, vectors, all_labels):
-    """Computes for each label the percentage of times where it was ranked not below the first invalid label.
+    """Computes for each label the percentage of times where it was ranked strictly higher the first invalid label.
 
     Looks only at cases where the label was in the ground truth. The higher, the better."""   
     
@@ -320,12 +320,13 @@ def label_wise_hit_rate(predictions, vectors, all_labels):
             appearances[label] += 1
         
         for (labels, membership) in grouped_predictions:
-            for label in [label for label in labels if label in true_labels]:
-                hits[label] += 1
             # if there's at least one label that's not part of the ground truth: stop looking
             if len([label for label in labels if label not in true_labels]) > 0:
                 break
             
+            for label in [label for label in labels if label in true_labels]:
+                hits[label] += 1
+                
         idx += 1
         
     result = {}
