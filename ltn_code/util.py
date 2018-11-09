@@ -204,6 +204,32 @@ def ranking_loss(predictions, vectors, all_labels):
     ranking_loss = (1.0 * summed_loss) / count
     return ranking_loss
 
+def cross_entropy_loss(predictions, vectors, all_labels):
+    """Computes the cross entropy loss between the predictions and the ground truth labels.
+    
+    How close are the numeric scores to the values of 0 and 1? The lower, the better."""
+    
+    sum_of_cross_entropies = 0
+    idx = 0
+    for (true_labels, vector) in vectors:
+        
+        for label in true_labels:
+            if predictions[label][idx] == 0.0:
+                sum_of_cross_entropies -= 1000
+            else:
+                sum_of_cross_entropies += log(predictions[label][idx], 2)
+        
+        false_labels = [label for label in all_labels if label not in true_labels]
+        for label in false_labels:
+            if predictions[label][idx] == 1.0:
+                sum_of_cross_entropies -= 1000
+            else:
+                sum_of_cross_entropies += log(1.0 - predictions[label][idx], 2)
+        
+        idx += 1
+    
+    return (-1.0 * sum_of_cross_entropies) / len(vectors)
+
 def average_precision(predictions, vectors):
     """Computes the average precision for the given vectors and the given predictions. 
     
@@ -275,33 +301,7 @@ def exact_match_prefix(predictions, vectors):
     exact_match_prefix = (1.0 * count) / len(vectors)
     return exact_match_prefix
 
-def cross_entropy_loss(predictions, vectors, all_labels):
-    """Computes the cross entropy loss between the predictions and the ground truth labels.
-    
-    How close are the numeric scores to the values of 0 and 1? The lower, the better."""
-    
-    sum_of_cross_entropies = 0
-    idx = 0
-    for (true_labels, vector) in vectors:
-        
-        for label in true_labels:
-            if predictions[label][idx] == 0.0:
-                sum_of_cross_entropies -= 1000
-            else:
-                sum_of_cross_entropies += log(predictions[label][idx], 2)
-        
-        false_labels = [label for label in all_labels if label not in true_labels]
-        for label in false_labels:
-            if predictions[label][idx] == 1.0:
-                sum_of_cross_entropies -= 1000
-            else:
-                sum_of_cross_entropies += log(1.0 - predictions[label][idx], 2)
-        
-        idx += 1
-    
-    return (-1.0 * sum_of_cross_entropies) / len(vectors)
-
-def label_wise_hit_rate(predictions, vectors, all_labels):
+def label_wise_precision(predictions, vectors, all_labels):
     """Computes for each label the percentage of times where it was ranked strictly higher the first invalid label.
 
     Looks only at cases where the label was in the ground truth. The higher, the better."""   
@@ -355,11 +355,11 @@ def evaluate(predictions, vectors, all_labels):
     result['one_error'] = one_error(predictions, vectors)
     result['coverage'] = coverage(predictions, vectors)
     result['ranking_loss'] = ranking_loss(predictions, vectors, all_labels)
+    result['cross_entropy_loss'] = cross_entropy_loss(predictions, vectors, all_labels)
     result['average_precision'] = average_precision(predictions, vectors)
     result['exact_match_prefix'] = exact_match_prefix(predictions, vectors)
-    result['cross_entropy_loss'] = cross_entropy_loss(predictions, vectors, all_labels)
-    result['label_wise_hit_rate'] = label_wise_hit_rate(predictions, vectors, all_labels)
-    result['contents'] = ['one_error', 'coverage', 'ranking_loss', 'average_precision', 'exact_match_prefix', 'cross_entropy_loss', 'label_wise_hit_rate']
+    result['label_wise_precision'] = label_wise_precision(predictions, vectors, all_labels)
+    result['contents'] = ['one_error', 'coverage', 'ranking_loss', 'cross_entropy_loss', 'average_precision', 'exact_match_prefix', 'label_wise_precision']
     
     return result
 
@@ -372,8 +372,8 @@ def print_evaluation(evaluation_results):
         print("\n{0}:".format(data_set))
         print("-"*(len(data_set) + 1))
         for name in evaluation['contents']:
-            if name == "label_wise_hit_rate":
-                print("label-wise hit rate:")
+            if name == "label_wise_precision":
+                print("label-wise precision:")
                 for label in evaluation[name]['contents']:
                     print("{0}: {1}".format(label, evaluation[name][label]))
             else:
@@ -390,7 +390,7 @@ def write_evaluation(evaluation_results, file_name, config_name):
             data_set = evaluation_results['contents'][0]
             evaluation = evaluation_results[data_set]
             for name in evaluation['contents']:
-                if name=="label_wise_hit_rate":
+                if name=="label_wise_precision":
                     for label in evaluation[name]['contents']:
                         f.write("{0},".format(label))
                 else:
@@ -405,7 +405,7 @@ def write_evaluation(evaluation_results, file_name, config_name):
             evaluation = evaluation_results[data_set]
             line = "{0},{1},".format(config_name, data_set)
             for name in evaluation['contents']:
-                if name=="label_wise_hit_rate":
+                if name=="label_wise_precision":
                     for label in evaluation[name]['contents']:
                         line += "{0},".format(evaluation[name][label])
                 else:

@@ -86,15 +86,15 @@ class TestUtil(unittest.TestCase):
 
 
 
-    # label_wise_hit_rate()
-    def test_label_wise_hit_rate_binary(self):
+    # label_wise_precision()
+    def test_label_wise_precision_binary(self):
         expectation = {'contents' : ['min', 'mean', 'A', 'B', 'C', 'D'], 'min': 0, 'mean' : 1/6, 'A': 0.5, 'B': 0, 'C': 0, 'D': None}
-        label_wise_hit_rate = util.label_wise_hit_rate(self.binary_predictions, self.vectors, self.all_labels)
-        self.assertEqual(expectation, label_wise_hit_rate)
+        label_wise_precision = util.label_wise_precision(self.binary_predictions, self.vectors, self.all_labels)
+        self.assertEqual(expectation, label_wise_precision)
 
-    def test_label_wise_hit_rate_continuous(self):
+    def test_label_wise_precision_continuous(self):
         expectation = {'contents' : ['min', 'mean', 'A', 'B', 'C', 'D'], 'min': 0, 'mean' : 0.5, 'A': 0.5, 'B': 0, 'C': 1, 'D': None}
-        label_wise_hit_rate = util.label_wise_hit_rate(self.continuous_predictions, self.vectors, self.all_labels)
-        self.assertEqual(expectation, label_wise_hit_rate)
+        label_wise_precision = util.label_wise_precision(self.continuous_predictions, self.vectors, self.all_labels)
+        self.assertEqual(expectation, label_wise_precision)
 
 unittest.main()
