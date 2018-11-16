@@ -31,8 +31,10 @@ def get_predictions(baseline_type, concepts, data_set):
     label_frequencies = util.label_distribution(config["training_vectors"], config["concepts"])    
     
     for label in concepts:
-        if baseline_type == 'constant':
+        if baseline_type == 'binary':
             prediction = 0.5
+        elif baseline_type == 'equal':
+            prediction = 1 / len(config["concepts"])
         elif baseline_type == 'distribution':
             prediction = label_frequencies[label]
             
@@ -40,15 +42,17 @@ def get_predictions(baseline_type, concepts, data_set):
       
     return predictions
 
-for baseline_type in ['constant', 'distribution']:
+for baseline_type in ['binary', 'equal', 'distribution']:
     train_predictions = get_predictions(baseline_type, config["concepts"], config["training_vectors"])
     validation_predictions = get_predictions(baseline_type, config["concepts"], config["validation_vectors"])
+    test_predictions = get_predictions(baseline_type, config["concepts"], config["test_vectors"])    
     
     # evaluate the predictions
     eval_results = {}
-    eval_results['contents'] = ['training', 'validation']
+    eval_results['contents'] = ['training', 'validation', 'test']
     eval_results['training'] = util.evaluate(train_predictions, config["training_vectors"], config["concepts"])
     eval_results['validation'] = util.evaluate(validation_predictions, config["validation_vectors"], config["concepts"])
+    eval_results['test'] = util.evaluate(test_predictions, config["test_vectors"], config["concepts"])    
     if not args.quiet:
         util.print_evaluation(eval_results)
     util.write_evaluation(eval_results, "output/{0}_{1}-baselines.csv".format(args.config_file.split('.')[0], args.config_name), "{0}_{1}".format(args.config_name, baseline_type))
