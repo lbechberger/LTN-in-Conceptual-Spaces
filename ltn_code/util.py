@@ -484,7 +484,11 @@ def data_set_characteristics(train_vectors, validation_vectors, test_vectors, al
     print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(train_vectors)))
     print("Label cardinality: {0}".format(label_cardinality(train_vectors)))
     print("Label density: {0}".format(label_density(train_vectors, all_labels)))
-    print("Label distribution: {0}".format(label_distribution(train_vectors, all_labels)))
+    label_dist = label_distribution(train_vectors, all_labels)
+    print("Label distribution:")
+    for label in sorted(all_labels):
+        print("{0}: {1}".format(label, label_dist[label]))
+    print("sum: {0}".format(sum(label_dist.values())))
     
     print("\nValidation Data:")
     print("----------------")
@@ -493,7 +497,11 @@ def data_set_characteristics(train_vectors, validation_vectors, test_vectors, al
     print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(validation_vectors)))
     print("Label cardinality: {0}".format(label_cardinality(validation_vectors)))
     print("Label density: {0}".format(label_density(validation_vectors, all_labels)))
-    print("Label distribution: {0}".format(label_distribution(validation_vectors, all_labels)))
+    label_dist = label_distribution(validation_vectors, all_labels)
+    print("Label distribution:")
+    for label in sorted(all_labels):
+        print("{0}: {1}".format(label, label_dist[label]))
+    print("sum: {0}".format(sum(label_dist.values())))
     
     print("\nTest Data:")
     print("----------")
@@ -502,8 +510,12 @@ def data_set_characteristics(train_vectors, validation_vectors, test_vectors, al
     print("Proportion of distinct label set: {0}".format(proportion_of_distinct_label_set(test_vectors)))
     print("Label cardinality: {0}".format(label_cardinality(test_vectors)))
     print("Label density: {0}".format(label_density(test_vectors, all_labels)))
-    print("Label distribution: {0}".format(label_distribution(test_vectors, all_labels)))
-
+    label_dist = label_distribution(test_vectors, all_labels)
+    print("Label distribution:")
+    for label in sorted(all_labels):
+        print("{0}: {1}".format(label, label_dist[label]))
+    print("sum: {0}".format(sum(label_dist.values())))
+    
 
 ###################
 # RULE EXTRACTION #
