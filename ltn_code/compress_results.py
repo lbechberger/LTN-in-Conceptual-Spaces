@@ -29,7 +29,7 @@ with open(input_file_name, 'r') as in_file:
         for line in in_file:
             if (line.startswith("config")):
                 # first line - just copy (and add 'count' column)
-                out_line = "{0};{1}\n".format(line.replace("\n", "").replace(",",";"), 'counter')
+                out_line = "{0},{1}\n".format(line.replace("\n", ""), 'counter')
                 out_file.write(out_line)
             else:
                 # regular line --> add to dictionary
@@ -40,4 +40,4 @@ with open(input_file_name, 'r') as in_file:
             for data_set, vectors in dictionary.items():
                 array = np.array(vectors)
                 averages = np.mean(array, axis=0)
-                out_file.write("{0};{1};{2};{3}\n".format(config, data_set, ";".join(map(lambda x: str(x), averages)), len(array)))            
+                out_file.write("{0},{1},{2},{3}\n".format(config, data_set, ",".join(map(lambda x: str(x), averages)), len(array)))            
