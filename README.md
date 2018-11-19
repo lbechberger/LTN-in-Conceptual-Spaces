@@ -130,7 +130,7 @@ This script can be executed as follows:
 ```
 python tools/find_optimal_params.py input_csv_file data_set_to_analyze
 ```
-Here, `input_csv_file` is the path to the csv output file created by either `run_knn.py` or `run_ltn.py`, and `data_set_to_analyze` should be set to either `training` or `validation`. 
+Here, `input_csv_file` is the path to the csv output file created by either `run_knn.py` or by the `compress_results.py` script ran on the output of`run_ltn.py`, and `data_set_to_analyze` should be set to either `training` or `validation`. 
 
 This script selects a subset of hyperparameter configurations and outputs them (together with their associated evaluation metric values) in a csv file located in the same directory as `input_csv_file`, using the same basic file name but with the `data_set_to_analyze` appended. So if you call the script like `python tools/find_optimal_params.py output/grid_search-LTN.csv validation`, the results will be stored in `output/grid_search-LTN_validation.csv`. 
 
