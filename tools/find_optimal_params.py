@@ -166,8 +166,8 @@ for record_name, record in records.items():
     
     heapq.heappush(priority_queue, (-overall_score, modified_record))
 
-# take the configurations with the highest score - either top 20 or highest 1% (based on smaller number)
-limit = min(int(0.01 * len(records.keys())), 20)
+# take the 20 configurations with the highest score
+limit = 20
 combination_candidates = []
 for i in range(limit):
     combination_candidates.append(heapq.heappop(priority_queue)[1])
