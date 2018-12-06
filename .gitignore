@@ -13,6 +13,10 @@ data/Schockaert-projected/raw
 # experiment outputs
 output/
 
+# don't update grid search configuration
+grid_search.cfg
+params.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
