@@ -191,8 +191,8 @@ class Predicate:
                 self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
             else:
                 # make initial guess based on some data points
-                self.mu = tf.Variable(tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers))
-            self.W = tf.Variable(tf.eye(self.domain.columns, batch_shape=[self.number_of_layers]), name = "W"+label)
+                self.mu = tf.Variable(tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers) + tf.random_normal([self.number_of_layers, self.domain.columns], stddev=0.1), name = "mu" + label)
+            self.W = tf.Variable(tf.random_normal(self.domain.columns, batch_shape=[self.number_of_layers], stddev=0.5), name = "W"+label)
             self.parameters = [self.W]
             
         elif self.ltn_type == "prototype":
@@ -201,7 +201,7 @@ class Predicate:
                 self.prototypes = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
             else:
                 # make initial guess based on some data points
-                self.prototypes = tf.Variable(tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers))
+                self.prototypes = tf.Variable(tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers) + tf.random_normal([self.number_of_layers, self.domain.columns], stddev=0.1), name = "mu" + label)
             self.weights = tf.abs(tf.Variable(tf.ones(shape=[self.domain.columns]), name = "W"+label))
             self.c = tf.abs(tf.Variable(tf.constant(10.0, shape=[1])))
             self.parameters = [-self.c]
