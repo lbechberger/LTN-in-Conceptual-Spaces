@@ -157,6 +157,15 @@ class Term(Domain):
         self.columns = function.columns
         self.tensor = self.function.tensor(self.domain)
 
+# modification by lbechberger: based on https://stackoverflow.com/a/49850652
+def tf_cov(x):
+    mean_x = tf.reduce_mean(x, axis=0, keep_dims=True)
+    mx = tf.matmul(tf.transpose(mean_x), mean_x)
+    vx = tf.matmul(tf.transpose(x), x)/tf.cast(tf.shape(x)[0], tf.float32)
+    cov_xx = vx - mx
+    return cov_xx
+    
+
 class Predicate:
     def __init__(self, label, domain, layers = None, max_min = 0.0, ltn_type = None, data_points = None):
         self.label = label
@@ -191,7 +200,9 @@ class Predicate:
                 self.mu = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
             else:
                 # make initial guess based on some data points
-                self.mu = tf.Variable(tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers) + tf.random_normal([self.number_of_layers, self.domain.columns], stddev=0.1), name = "mu" + label)
+                mean = tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers)
+                distr = tf.contrib.distributions.MultivariateNormalFullCovariance(mean, tf_cov(data_points))
+                self.mu = tf.Variable(distr.sample(), name = "mu" + label)
             self.W = tf.Variable(tf.random_normal(self.domain.columns, batch_shape=[self.number_of_layers], stddev=0.5), name = "W"+label)
             self.parameters = [self.W]
             
@@ -201,8 +212,10 @@ class Predicate:
                 self.prototypes = tf.Variable(tf.random_normal([self.number_of_layers, self.domain.columns]), name = "mu"+label)
             else:
                 # make initial guess based on some data points
-                self.prototypes = tf.Variable(tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers) + tf.random_normal([self.number_of_layers, self.domain.columns], stddev=0.1), name = "mu" + label)
-            self.weights = tf.abs(tf.Variable(tf.ones(shape=[self.domain.columns]), name = "W"+label))
+                mean = tf.stack([tf.reduce_mean(data_points, axis=0)]*self.number_of_layers)
+                distr = tf.contrib.distributions.MultivariateNormalFullCovariance(mean, tf_cov(data_points))
+                self.prototypes = tf.Variable(distr.sample(), name = "mu" + label)
+            self.weights = tf.abs(tf.Variable(tf.random_normal(shape=[self.domain.columns], stddev=0.5), name = "W"+label))
             self.c = tf.abs(tf.Variable(tf.constant(10.0, shape=[1])))
             self.parameters = [-self.c]
             
