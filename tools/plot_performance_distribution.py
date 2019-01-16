@@ -17,7 +17,7 @@ parser.add_argument('input_file', help = 'the input file containing the averaged
 parser.add_argument('metric', help = 'the name of the metric to investigate')
 parser.add_argument('-o', '--output_folder', help = 'the folder to which the plots should be saved', default='.')
 parser.add_argument('-d', '--data_set', help = 'the data set to analyze', default='validation')
-parser.add_argument('-p', '--percentage', help = 'size of top percentile to look at', default = 10, type = int)
+parser.add_argument('-p', '--percentage', help = 'size of top percentile to look at', default = 0.1, type = float)
 parser.add_argument('-m', '--minimize', action = 'store_true', help = 'set if metric is to be minimized')
 args = parser.parse_args()
 
@@ -31,10 +31,10 @@ for line in reader:
         all_values.append(float(line[args.metric]))
 
 if args.minimize:
-    threshold = np.percentile(all_values, args.percentage)
+    threshold = np.percentile(all_values, int(100 * args.percentage))
     filtered_values = [val for val in all_values if val <= threshold]
 else:
-    threshold = np.percentile(all_values, 100 - args.percentage)
+    threshold = np.percentile(all_values, 100 - int(100 * args.percentage))
     filtered_values = [val for val in all_values if val >= threshold]
 
 # histogram (on raw array)
