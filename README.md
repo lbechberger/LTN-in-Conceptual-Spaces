@@ -141,12 +141,11 @@ The hyperparmeter configurations are selected in two ways:
 In addition to the selected configurations, the output file also contains a row **BEST** which contains the best value for each of the metrics that was achieved by *any* configuration, and a row **WORST** which records the worst observed values for each configuration.
 
 ## Plotting the performance distribution
-In order to visualize the distribution of LTN performance with respect to a given metric, you can use the script `plot_performance_distribution.py`:
+In order to visualize the distribution of LTN performance with respect to all metrics, you can use the script `plot_performance_distribution.py`:
 ```
-python tools/plot_performance_distribution.py input_csv_file metric
+python tools/plot_performance_distribution.py input_csv_file
 ```
-The parameter `input_csv_file` should contain one row for each of the different configurations. If configurations were run multiple times, this should thus be the averaged results (i.e., the output file of `compress_results.py`). The given `metric` must be one of the columns of this csv file. The script collects all the values achieved for this metric and creates some plots visualizing them: A histogram with 21 bins, a line graph, and a scatter plot. For the line graph and the scatter plot, the values are first sorted. The x-axis is just the index of the sorted lis and the y-axis gives the respective performance value. The script takes the following optional arguments:
+The parameter `input_csv_file` should contain one row for each of the different configurations. If configurations were run multiple times, this should thus be the averaged results (i.e., the output file of `compress_results.py`). The script collects all the values achieved for all metrics and creates some plots visualizing them: A histogram with 21 bins, a line graph, and a scatter plot. For the line graph and the scatter plot, the values are first sorted. The x-axis is just the index of the sorted lis and the y-axis gives the respective performance value. The script takes the following optional arguments:
 - `-o` or `--output_folder`: The folder where the plots are stored. Defaults to `.`, i.e., the current working directory.
 - `-d` or `--data_set`: Defines the data set to analyze. By default, `validation` is used.
 - `-p` or `--percentage`: Fraction of data points to plot. Defaults to 0.1, which means that only the top 10% of the data points are plotted (in order to make differences more visible)
-- `-m` or `--minimize`: Use this flag if the metric is to be minimized. Then, the bottom `-p` percent will be plotted. If this flag is not set, the top `-p` percent are plotted.
