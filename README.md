@@ -1,12 +1,13 @@
 # LTN-in-Conceptual-Spaces
 Applying Logic Tensor Networks in Conceptual Spaces
 
-Logic Tensor Networks ([Paper](https://arxiv.org/abs/1606.04422), [Code](https://www.dropbox.com/sh/502aq9u537lrmbv/AABuiKT4cKN-P3J7RIXd3cQ9a?dl=0)) provide a way of connecting logical rules with a feature space representation.
+Logic Tensor Networks ([Paper](https://arxiv.org/abs/1606.04422), [Code](https://github.com/logictensornetworks/logictensornetworks)) provide a way of connecting logical rules with a feature space representation.
 
 In this repository, we use LTNs to learn concepts in a conceptual space.
 
 Copyright of "logictensornetworks.py" is retained by Luciano Serafini and Artur d'Avila Garcez. The files in `data/Schockaert/` were created based on data downloadable from (https://www.cs.cf.ac.uk/semanticspaces/) and reported in Joaquín Derrac and Steven Schockaert. Inducing semantic relations from conceptual spaces: a data-driven approach to commonsense reasoning, Artificial Intelligence, vol. 228, pages 66-94, 2015.
 
+The files in `data/Ager` were kindly provided by Thomas Ager and are based on research reported in Ager, T.; Kuželka, O. & Schockaert, S. Modelling Salient Features as Directions in Fine-Tuned Semantic Spaces Proceedings of the 22nd Conference on Computational Natural Language Learning, 2018, 530-540 [Code](https://github.com/ThomasAger/Modelling-Salient-Features-as-Directions-in-Fine-Tuned-Semantic-Spaces).
 
 ## Requirements
 
