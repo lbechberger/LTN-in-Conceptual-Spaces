@@ -234,28 +234,28 @@ for first_concept in all_concepts:
                             count_nnn += 1
         
             # take care of "A AND B IMPLIES C"  
-            if all(x > 0 for x in count_pp):
+            if count_pp > 0:
                 p_and_p_impl_p = count_ppp / count_pp
                 p_and_p_impl_n = count_ppn / count_pp
 
                 rules['pANDpIMPLp'].append([p_and_p_impl_p, first_concept, second_concept, third_concept])
                 rules['pANDpIMPLn'].append([p_and_p_impl_n, first_concept, second_concept, third_concept])
 
-            if all(x > 0 for x in count_pn):
+            if count_pn > 0:
                 p_and_n_impl_p = count_pnp / count_pn
                 p_and_n_impl_n = count_pnn / count_pn
             
                 rules['pANDnIMPLp'].append([p_and_n_impl_p, first_concept, second_concept, third_concept])
                 rules['pANDnIMPLn'].append([p_and_n_impl_n, first_concept, second_concept, third_concept])
 
-            if all(x > 0 for x in count_np):
+            if count_np > 0:
                 n_and_p_impl_p = count_npp / count_np
                 n_and_p_impl_n = count_npn / count_np
 
                 rules['nANDpIMPLp'].append([n_and_p_impl_p, first_concept, second_concept, third_concept])
                 rules['nANDpIMPLn'].append([n_and_p_impl_n, first_concept, second_concept, third_concept])
 
-            if all(x > 0 for x in count_nn):
+            if count_nn > 0:
                 n_and_n_impl_p = count_nnp / count_nn
                 n_and_n_impl_n = count_nnn / count_nn
                        
@@ -263,7 +263,7 @@ for first_concept in all_concepts:
                 rules['nANDnIMPLn'].append([n_and_n_impl_n, first_concept, second_concept, third_concept])
             
             # take care of "A IMPLIES B OR C"
-            if all(x > 0 for x in count_p):
+            if count_p > 0:
                 p_impl_p_or_p = (count_pp + count_pnp) / count_p    # size(B or C) = size(B) + size(not B and C) 
                 p_impl_p_or_n = (count_pp + count_pnn) / count_p    # size(B or not C) = size(B) + size(not B and not C)
                 p_impl_n_or_p = (count_pn + count_ppp) / count_p    # size(not B or C) = size(not B) + size(B and C)
@@ -274,7 +274,7 @@ for first_concept in all_concepts:
                 rules['pIMPLnORp'].append([p_impl_n_or_p, first_concept, second_concept, third_concept])
                 rules['pIMPLnORn'].append([p_impl_n_or_n, first_concept, second_concept, third_concept])
             
-            if all(x > 0 for x in count_n):
+            if count_n > 0:
                 n_impl_p_or_p = (count_np + count_nnp) / count_n    # size(B or C) = size(B) + size(not B and C) 
                 n_impl_p_or_n = (count_np + count_nnn) / count_n    # size(B or not C) = size(B) + size(not B and not C)
                 n_impl_n_or_p = (count_nn + count_npp) / count_n    # size(not B or C) = size(not B) + size(B and C)
