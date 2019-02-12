@@ -38,8 +38,8 @@ all_classifications = np.concatenate((keyword_classifications, genre_classificat
 # rule types we're interested in. "p" means "positive", "n" means "negative", 
 #"IMPL" means "implies", and "DIFF" means "is different from"
 rule_types = ['pIMPLp', 'pIMPLn', 'nIMPLp', 'nIMPLn',
-              'pANDpIMPLp', 'pANDpIMPLn', 'pANDnIMPLp', 'pANDnIMPLn', 'nANDpIMPLp', 'nANDpIMPLn', 'nANDnIMPLp', 'nANDnIMPLn',
-              'pIMPLpORp', 'pIMPLpORn', 'pIMPLnORp', 'pIMPLnORn', 'nIMPLpORp', 'nIMPLpORn', 'nIMPLnORp', 'nIMPLnORn',
+              'pANDpIMPLp', 'pANDpIMPLn', 'pANDnIMPLp', 'pANDnIMPLn', 'nANDnIMPLp', 'nANDnIMPLn',
+              'pIMPLpORp', 'pIMPLpORn', 'pIMPLnORn', 'nIMPLpORp', 'nIMPLpORn', 'nIMPLnORn',
               'pDIFFp']
 
 # dicitionary mapping rule types to desired output string
@@ -47,12 +47,11 @@ rule_strings = {'pIMPLp' : '{0} IMPLIES {1}', 'pIMPLn' : '{0} IMPLIES (NOT {1})'
                 'nIMPLp' : '(NOT {0}) IMPLIES {1}', 'nIMPLn' : '(NOT {0}) IMPLIES (NOT {1})',
                 'pANDpIMPLp' : '{0} AND {1} IMPLIES {2}', 'pANDpIMPLn' : '{0} AND {1} IMPLIES (NOT {2})', 
                 'pANDnIMPLp' : '{0} AND (NOT {1}) IMPLIES {2}', 'pANDnIMPLn' : '{0} AND (NOT {1}) IMPLIES (NOT {2})', 
-                'nANDpIMPLp' : '(NOT {0}) AND {1} IMPLIES {2}', 'nANDpIMPLn' : '(NOT {0}) AND {1} IMPLIES (NOT {2})', 
                 'nANDnIMPLp' : '(NOT {0}) AND (NOT {1}) IMPLIES {2}', 'nANDnIMPLn' : '(NOT {0}) AND (NOT {1}) IMPLIES (NOT {2})',
                 'pIMPLpORp' : '{0} IMPLIES {1} OR {2}', 'pIMPLpORn' : '{0} IMPLIES {1} OR (NOT {2})', 
-                'pIMPLnORp' : '{0} IMPLIES (NOT {1}) OR {2}', 'pIMPLnORn' : '{0} IMPLIES (NOT {1}) OR (NOT {2})', 
+                'pIMPLnORn' : '{0} IMPLIES (NOT {1}) OR (NOT {2})', 
                 'nIMPLpORp' : '(NOT {0}) IMPLIES {1} OR {2}', 'nIMPLpORn' : '(NOT {0}) IMPLIES {1} OR (NOT {2})', 
-                'nIMPLnORp' : '(NOT {0}) IMPLIES (NOT {1}) OR {2}', 'nIMPLnORn' : '(NOT {0}) IMPLIES (NOT {1}) OR (NOT {2})',
+                'nIMPLnORn' : '(NOT {0}) IMPLIES (NOT {1}) OR (NOT {2})',
                 'pDIFFp' : '{0} DIFFERENT FROM {1}'}              
 
 # define names of output files
@@ -210,13 +209,6 @@ for first_concept in all_concepts:
                 rules['pANDnIMPLp'].append([p_and_n_impl_p, first_concept, second_concept, third_concept])
                 rules['pANDnIMPLn'].append([p_and_n_impl_n, first_concept, second_concept, third_concept])
 
-            if count_np > 0:
-                n_and_p_impl_p = count_npp / count_np
-                n_and_p_impl_n = count_npn / count_np
-
-                rules['nANDpIMPLp'].append([n_and_p_impl_p, first_concept, second_concept, third_concept])
-                rules['nANDpIMPLn'].append([n_and_p_impl_n, first_concept, second_concept, third_concept])
-
             if count_nn > 0:
                 n_and_n_impl_p = count_nnp / count_nn
                 n_and_n_impl_n = count_nnn / count_nn
@@ -230,14 +222,11 @@ for first_concept in all_concepts:
                 p_impl_p_or_p = (count_pp + count_pnp) / count_p 
                 # size(B or not C) = size(B) + size(not B and not C)
                 p_impl_p_or_n = (count_pp + count_pnn) / count_p   
-                # size(not B or C) = size(not B) + size(B and C)
-                p_impl_n_or_p = (count_pn + count_ppp) / count_p  
                 # size(not B or not C) = size(not B) + size(B and not C)
                 p_impl_n_or_n = (count_pn + count_ppn) / count_p    
             
                 rules['pIMPLpORp'].append([p_impl_p_or_p, first_concept, second_concept, third_concept])
                 rules['pIMPLpORn'].append([p_impl_p_or_n, first_concept, second_concept, third_concept])
-                rules['pIMPLnORp'].append([p_impl_n_or_p, first_concept, second_concept, third_concept])
                 rules['pIMPLnORn'].append([p_impl_n_or_n, first_concept, second_concept, third_concept])
             
             if count_n > 0:
@@ -245,14 +234,11 @@ for first_concept in all_concepts:
                 n_impl_p_or_p = (count_np + count_nnp) / count_n  
                 # size(B or not C) = size(B) + size(not B and not C)
                 n_impl_p_or_n = (count_np + count_nnn) / count_n    
-                # size(not B or C) = size(not B) + size(B and C)
-                n_impl_n_or_p = (count_nn + count_npp) / count_n    
                 # size(not B or not C) = size(not B) + size(B and not C)
                 n_impl_n_or_n = (count_nn + count_npn) / count_n    
             
                 rules['nIMPLpORp'].append([n_impl_p_or_p, first_concept, second_concept, third_concept])
                 rules['nIMPLpORn'].append([n_impl_p_or_n, first_concept, second_concept, third_concept])
-                rules['nIMPLnORp'].append([n_impl_n_or_p, first_concept, second_concept, third_concept])
                 rules['nIMPLnORn'].append([n_impl_n_or_n, first_concept, second_concept, third_concept])
 
 if not args.quiet:
