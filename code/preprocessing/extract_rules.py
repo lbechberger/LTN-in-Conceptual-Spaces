@@ -14,6 +14,9 @@ import numpy as np
 parser = argparse.ArgumentParser(description='rule extraction by label counting')                  
 parser.add_argument('keywords_folder', help = 'path to the folder containing label information about plot keywords')
 parser.add_argument('genres_folder', help = 'path to the folder containing label information about genres')
+parser.add_argument('-s', '--support', type = float, help = 'threshold for rule support', default = 0.01)
+parser.add_argument('-i', '--improvement', type = float, help = 'threshold for rule improvement', default = 0.1)  
+parser.add_argument('-c', '--confidence', type = float, help = 'threshold for rule confidence', default = 0.9)                
 parser.add_argument('-q', '--quiet', action="store_true", help = 'disables info output')                    
 args = parser.parse_args()
 
@@ -54,70 +57,23 @@ rule_strings = {'pIMPLp' : '{0} IMPLIES {1}', 'pIMPLn' : '{0} IMPLIES (NOT {1})'
                 'nIMPLnORn' : '(NOT {0}) IMPLIES (NOT {1}) OR (NOT {2})',
                 'pDIFFp' : '{0} DIFFERENT FROM {1}'}              
 
-# define names of output files
-summary_output_file_template = "output/{0}_{1}-rules_{2}.csv"
-rules_output_prefix_template = "output/rules_{2}/{0}-{1}"
-rules_output_template = "{0}-{1}-{2}.csv"
-
-def evaluate_rules(rules_dict, data_set, config, algorithm, quiet):
-    """Evaluates the validity of the rules given in the rules_dict and outputs them (both to console and files)."""
-
-    summary_output_file = summary_output_file_template.format(data_set, config, algorithm)
-    rules_output_prefix = rules_output_prefix_template.format(data_set, config, algorithm)
-    
-    output_strings = ['rule_type,desired_threshold,num_rules\n']
-
-    if not quiet:
-        print("\nRule evaluation")
-    
-    for rule_type, rule_instances in rules_dict.items():
-        for confidence_threshold in [0.7, 0.8, 0.9, 0.95, 0.99]:
-            # filter list of rules according to confidence_threshold
-            filtered_list = list(filter(lambda x: x[0] >= confidence_threshold , rule_instances))
-            if len(filtered_list) == 0:
-                if not quiet:
-                    print("Could not find rules of type {0} when trying to achieve {1} on validation set.".format(rule_type, confidence_threshold))
-                continue
-            
-            # print right away        
-            if not quiet:
-                print("Number of rules of type {0} left when trying to achieve {1} on data set: {2} ".format(rule_type, confidence_threshold, 
-                      len(filtered_list)))
-            
-            # store for output into file
-            output_strings.append(",".join([rule_type, str(confidence_threshold), str(len(filtered_list))]) + '\n')
-            
-            # write resulting rules into file
-            rules_file_name =  rules_output_template.format(rules_output_prefix, rule_type, confidence_threshold)
-            with open(rules_file_name, 'w') as f:
-                f.write("rule,confidence\n")
-                for rule in filtered_list:
-                    if len(rule) == 3:
-                        rule_string = rule_strings[rule_type].format(rule[1], rule[2])
-                    elif len(rule) == 4:
-                        rule_string = rule_strings[rule_type].format(rule[1], rule[2], rule[3])
-                    else:
-                        raise(Exception("invalid length of rule information"))
-                    line = "{0},{1}\n".format(rule_string, rule[0])
-                    f.write(line)
-        
-        if not quiet:
-            print("")
-    
-    with open(summary_output_file, 'w') as f:
-        for line in output_strings:
-            f.write(line)    
-
-
 # dictionary for the confidence values extracted from the data set
 # maps from rule type to a list containing rules and their confidence
 rules = { }
 for rule_type in rule_types:
-    rules[rule_type] = []
+    rules[rule_type] = {}
 
 if not args.quiet:
     print("Extracting rule probabilities ...")
 
+# rules with a smaller support than minimal_support are discarded immediately
+minimal_support = args.support * len(all_classifications)
+
+def store_rule(rule_name, support, probability, concepts):
+    """Stores the given rule in the dictionary (converting probability to confidence)."""
+    confidence = (probability - 0.5) * 2
+    tuple_name = '_'.join(concepts)
+    rules[rule_name][tuple_name] = [support, confidence] + concepts
 
 for first_concept in all_concepts:
     if not args.quiet:
@@ -153,15 +109,15 @@ for first_concept in all_concepts:
             p_impl_p = count_pp / count_p
             p_impl_n = count_pn / count_p
             
-            rules['pIMPLp'].append([p_impl_p, first_concept, second_concept])        
-            rules['pIMPLn'].append([p_impl_n, first_concept, second_concept])        
-
+            store_rule('pIMPLp', count_p, p_impl_p, [first_concept, second_concept])
+            store_rule('pIMPLn', count_p, p_impl_n, [first_concept, second_concept])
+            
         if count_n > 0:
             n_impl_p = count_np / count_n
             n_impl_n = count_nn / count_n
 
-            rules['nIMPLn'].append([n_impl_n, first_concept, second_concept])     
-            rules['nIMPLp'].append([n_impl_p, first_concept, second_concept])        
+            store_rule('nIMPLp', count_n, n_impl_p, [first_concept, second_concept])
+            store_rule('nIMPLn', count_n, n_impl_n, [first_concept, second_concept])
 
         # create subsets
         classifications_pp = classifications_p[classifications_p[:,second_idx] == 1]
@@ -199,22 +155,22 @@ for first_concept in all_concepts:
                 p_and_p_impl_p = count_ppp / count_pp
                 p_and_p_impl_n = count_ppn / count_pp
 
-                rules['pANDpIMPLp'].append([p_and_p_impl_p, first_concept, second_concept, third_concept])
-                rules['pANDpIMPLn'].append([p_and_p_impl_n, first_concept, second_concept, third_concept])
-
+                store_rule('pANDpIMPLp', count_pp, p_and_p_impl_p, [first_concept, second_concept, third_concept])
+                store_rule('pANDpIMPLn', count_pp, p_and_p_impl_n, [first_concept, second_concept, third_concept])
+                
             if count_pn > 0:
                 p_and_n_impl_p = count_pnp / count_pn
                 p_and_n_impl_n = count_pnn / count_pn
             
-                rules['pANDnIMPLp'].append([p_and_n_impl_p, first_concept, second_concept, third_concept])
-                rules['pANDnIMPLn'].append([p_and_n_impl_n, first_concept, second_concept, third_concept])
+                store_rule('pANDnIMPLp', count_pn, p_and_n_impl_p, [first_concept, second_concept, third_concept])
+                store_rule('pANDnIMPLn', count_pn, p_and_n_impl_n, [first_concept, second_concept, third_concept])
 
             if count_nn > 0:
                 n_and_n_impl_p = count_nnp / count_nn
                 n_and_n_impl_n = count_nnn / count_nn
                        
-                rules['nANDnIMPLp'].append([n_and_n_impl_p, first_concept, second_concept, third_concept])
-                rules['nANDnIMPLn'].append([n_and_n_impl_n, first_concept, second_concept, third_concept])
+                store_rule('nANDnIMPLp', count_nn, n_and_n_impl_p, [first_concept, second_concept, third_concept])
+                store_rule('nANDnIMPLn', count_nn, n_and_n_impl_n, [first_concept, second_concept, third_concept])
             
             # take care of "A IMPLIES B OR C"
             if count_p > 0:
@@ -225,9 +181,9 @@ for first_concept in all_concepts:
                 # size(not B or not C) = size(not B) + size(B and not C)
                 p_impl_n_or_n = (count_pn + count_ppn) / count_p    
             
-                rules['pIMPLpORp'].append([p_impl_p_or_p, first_concept, second_concept, third_concept])
-                rules['pIMPLpORn'].append([p_impl_p_or_n, first_concept, second_concept, third_concept])
-                rules['pIMPLnORn'].append([p_impl_n_or_n, first_concept, second_concept, third_concept])
+                store_rule('pIMPLpORp', count_p, p_impl_p_or_p, [first_concept, second_concept, third_concept])
+                store_rule('pIMPLpORn', count_p, p_impl_p_or_n, [first_concept, second_concept, third_concept])
+                store_rule('pIMPLnORn', count_p, p_impl_n_or_n, [first_concept, second_concept, third_concept])
             
             if count_n > 0:
                 # size(B or C) = size(B) + size(not B and C) 
@@ -237,14 +193,103 @@ for first_concept in all_concepts:
                 # size(not B or not C) = size(not B) + size(B and not C)
                 n_impl_n_or_n = (count_nn + count_npn) / count_n    
             
-                rules['nIMPLpORp'].append([n_impl_p_or_p, first_concept, second_concept, third_concept])
-                rules['nIMPLpORn'].append([n_impl_p_or_n, first_concept, second_concept, third_concept])
-                rules['nIMPLnORn'].append([n_impl_n_or_n, first_concept, second_concept, third_concept])
+                store_rule('nIMPLpORp', count_n, n_impl_p_or_p, [first_concept, second_concept, third_concept])
+                store_rule('nIMPLpORn', count_n, n_impl_p_or_n, [first_concept, second_concept, third_concept])
+                store_rule('nIMPLnORn', count_n, n_impl_n_or_n, [first_concept, second_concept, third_concept])
 
 if not args.quiet:
-    print("Evaluating the results...")
+    print("Filtering rules ...")
 
-evaluate_rules(rules, 'genres_and_keywords', 'all', 'counting', args.quiet)
+epsilon = 1e-10
+
+# filter for rule improvements
+def filter_improvement(complex_rule_type, simple_rule_type_one, simple_rule_type_two, filter_type):
+    for rule, values in rules[complex_rule_type].copy().items():
+        
+        complex_confidence = values[1]
+        
+        if filter_type == 'and':
+            first_confidence = rules[simple_rule_type_one]["_".join([values[2], values[4]])][1]
+            second_confidence = rules[simple_rule_type_two]["_".join([values[3], values[4]])][1]
+        elif filter_type == 'or':
+            first_confidence = rules[simple_rule_type_one]["_".join([values[2], values[3]])][1]
+            second_confidence = rules[simple_rule_type_two]["_".join([values[2], values[4]])][1]
+        else:
+            raise Exception('invalid filter type')
+        
+        first_improvement = (complex_confidence + epsilon) / (first_confidence + epsilon)
+        second_improvement = (complex_confidence + epsilon) / (second_confidence + epsilon)
+        improvement = min(first_improvement, second_improvement)
+        
+        if improvement - 1 < args.improvement:
+            del rules[complex_rule_type][rule]
+
+# filter out rules with poor improvement
+filter_improvement('pANDpIMPLp', 'pIMPLp', 'pIMPLp', 'and')
+filter_improvement('pANDpIMPLn', 'pIMPLn', 'pIMPLn', 'and')
+filter_improvement('pANDnIMPLp', 'pIMPLp', 'nIMPLp', 'and')
+filter_improvement('pANDnIMPLn', 'pIMPLn', 'nIMPLn', 'and')
+filter_improvement('nANDnIMPLp', 'nIMPLp', 'nIMPLp', 'and')
+filter_improvement('nANDnIMPLn', 'nIMPLn', 'nIMPLn', 'and')
+
+filter_improvement('pIMPLpORp', 'pIMPLp', 'pIMPLp', 'or')
+filter_improvement('pIMPLpORn', 'pIMPLp', 'pIMPLn', 'or')
+filter_improvement('pIMPLnORn', 'pIMPLn', 'pIMPLn', 'or')
+filter_improvement('nIMPLpORp', 'nIMPLp', 'nIMPLp', 'or')
+filter_improvement('nIMPLpORn', 'nIMPLp', 'nIMPLn', 'or')
+filter_improvement('nIMPLnORn', 'nIMPLn', 'nIMPLn', 'or')
+
+# filter out rules with insufficient support
+for rule_type in rule_types:
+    for rule, values in rules[rule_type].copy().items():
+        if values[0] < args.support:
+            del rules[rule_type][rule]
+
+# filter out rules with insufficient confidence
+for rule_type in rule_types:
+    for rule, values in rules[rule_type].copy().items():
+        if values[1] < args.confidence:
+            del rules[rule_type][rule]
+
+# define names of output files
+summary_output_file = "output/rules-{0}-{1}-{2}.csv".format(args.support, args.improvement, args.confidence)
+rules_output_template = "output/rules/{0}.csv"
+
+output_strings = ['rule_type,confidence_threshold,num_rules\n']
+
+if not args.quiet:
+    print("Evaluating the rules ...")
+
+for rule_type, rule_instances in rules.items():
+
+    # print length of list     
+    if not args.quiet:
+        print("Number of rules of type {0} left for support {1}, confidence {2}, improvement {3}: {4} ".format(rule_type, args.support, args.confidence, args.improvement,
+              len(rule_instances.keys())))
+    
+    # store for output into file
+    output_strings.append(",".join([rule_type, str(args.confidence), str(len(rule_instances.keys()))]) + '\n')
+    
+    # write resulting rules into file
+    rules_file_name =  rules_output_template.format(rule_type)
+    with open(rules_file_name, 'w') as f:
+        f.write("rule,support,confidence\n")
+        for rule_string, rule_content in rule_instances.items():
+            if len(rule_content) == 4:
+                rule_string = rule_strings[rule_type].format(rule[2], rule[3])
+            elif len(rule_content) == 5:
+                rule_string = rule_strings[rule_type].format(rule[2], rule[3], rule[4])
+            else:
+                raise(Exception("invalid length of rule information"))
+            line = "{0},{1},{2}\n".format(rule_string, rule[0], rule[1])
+            f.write(line)
+    
+    if not args.quiet:
+        print("")
+
+with open(summary_output_file, 'w') as f:
+    for line in output_strings:
+        f.write(line)    
 
 if not args.quiet:
     print("DONE")
