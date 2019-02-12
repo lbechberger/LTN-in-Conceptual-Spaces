@@ -117,34 +117,20 @@ for rule_type in rule_types:
     rules[rule_type] = []
 
 if not args.quiet:
-    print("Counting co-occurrences ...")
+    print("Extracting rule probabilities ...")
 
-# store the counts in dictionaries
-count_p = {}    # first_concept is positive
-count_n = {}    # first_concept is negative
-count_pp = {}   # first concept is positive, second concept is positive
-count_pn = {}   # first concept is positive, second concept is negative
-count_np = {}   # first concept is negative, second concept is positive
-count_nn = {}   # first concept is negative, second concept is negative
-count_ppp = {}  # first concept is positive, second concept is positive, third concept is positive
-count_ppn = {}  # ...
-count_pnp = {}
-count_pnn = {}
-count_npp = {}
-count_npn = {}
-count_nnp = {}
-count_nnn = {}
 
-# collect all the counts    
 for first_concept in all_concepts:
     if not args.quiet:
         print('\t{0}'.format(first_concept))
     
     first_idx = all_concepts.index(first_concept)
     
-    count_p[first_concept] = np.sum(all_classifications[:,first_idx])
-    count_n[first_concept] = len(all_classifications) - count_p[first_concept]
+    # do the counts
+    count_p = np.sum(all_classifications[:,first_idx])
+    count_n = len(all_classifications) - count_p
 
+    # create subsets
     classifications_p = all_classifications[all_classifications[:,first_idx] == 1]
     classifications_n = all_classifications[all_classifications[:,first_idx] == 0]
 
@@ -156,12 +142,29 @@ for first_concept in all_concepts:
         second_idx = all_concepts.index(second_concept)        
         tuple_name = "{0}_{1}".format(first_concept, second_concept)
 
-        count_pp[tuple_name] = np.sum(classifications_p[:,second_idx])
-        count_pn[tuple_name] = len(classifications_p) - count_pp[tuple_name]
+        # do the counts
+        count_pp = np.sum(classifications_p[:,second_idx])
+        count_pn = len(classifications_p) - count_pp
         
-        count_np[tuple_name] = np.sum(classifications_n[:,second_idx])
-        count_nn[tuple_name] = len(classifications_n) - count_np[tuple_name]
-        
+        count_np = np.sum(classifications_n[:,second_idx])
+        count_nn = len(classifications_n) - count_np
+ 
+        # compute the probabilities
+        if count_p > 0:
+            p_impl_p = count_pp / count_p
+            p_impl_n = count_pn / count_p
+            
+            rules['pIMPLp'].append([p_impl_p, first_concept, second_concept])        
+            rules['pIMPLn'].append([p_impl_n, first_concept, second_concept])        
+
+        if count_n > 0:
+            n_impl_p = count_np / count_n
+            n_impl_n = count_nn / count_n
+
+            rules['nIMPLn'].append([n_impl_n, first_concept, second_concept])     
+            rules['nIMPLp'].append([n_impl_p, first_concept, second_concept])        
+
+        # create subsets
         classifications_pp = classifications_p[classifications_p[:,second_idx] == 1]
         classifications_pn = classifications_p[classifications_p[:,second_idx] == 0]
         
@@ -177,110 +180,75 @@ for first_concept in all_concepts:
             third_idx = all_concepts.index(third_concept)
             triple_name = "{0}_{1}_{2}".format(first_concept, second_concept, third_concept)
             
-            count_ppp[triple_name] = np.sum(classifications_pp[:,third_idx])
-            count_ppn[triple_name] = len(classifications_pp) - count_ppp[triple_name]
+            # do the counts
+            count_ppp = np.sum(classifications_pp[:,third_idx])
+            count_ppn = len(classifications_pp) - count_ppp
             
-            count_pnp[triple_name] = np.sum(classifications_pn[:,third_idx])
-            count_pnn[triple_name] = len(classifications_pn) - count_pnp[triple_name]
+            count_pnp = np.sum(classifications_pn[:,third_idx])
+            count_pnn = len(classifications_pn) - count_pnp
             
-            count_npp[triple_name] = np.sum(classifications_np[:,third_idx])
-            count_npn[triple_name] = len(classifications_np) - count_npp[triple_name]
+            count_npp = np.sum(classifications_np[:,third_idx])
+            count_npn = len(classifications_np) - count_npp
             
-            count_nnp[triple_name] = np.sum(classifications_nn[:,third_idx])
-            count_nnn[triple_name] = len(classifications_nn) - count_nnp[triple_name]
+            count_nnp = np.sum(classifications_nn[:,third_idx])
+            count_nnn = len(classifications_nn) - count_nnp
             
-
-if not args.quiet:
-    print("Extracting rule probabilities...")
-            
-# now look for rules like "first_concept IMPLIES second_concept"
-# and "first_concept AND second_concept IMPLIES third_concept" and "first_concept IMPLIES second_concept OR third_concept"
-for first_concept in all_concepts:
-    if not args.quiet:
-        print('\t{0}'.format(first_concept))
-    
-    for second_concept in all_concepts:
-        
-        if first_concept == second_concept: # ignore trivial rules
-            continue
-
-        tuple_name = "{0}_{1}".format(first_concept, second_concept)        
-        
-        if count_p[first_concept] > 0:
-            p_impl_p = count_pp[tuple_name] / count_p[first_concept]
-            p_impl_n = count_pn[tuple_name] / count_p[first_concept]
-            
-            rules['pIMPLp'].append([p_impl_p, first_concept, second_concept])        
-            rules['pIMPLn'].append([p_impl_n, first_concept, second_concept])        
-
-        if count_n[first_concept] > 0:
-            n_impl_p = count_np[tuple_name] / count_n[first_concept]
-            n_impl_n = count_nn[tuple_name] / count_n[first_concept]
-
-            rules['nIMPLn'].append([n_impl_n, first_concept, second_concept])     
-            rules['nIMPLp'].append([n_impl_p, first_concept, second_concept])        
-
-        for third_concept in all_concepts:
-            
-            if third_concept in [first_concept, second_concept]: # ignore trivial rules
-                continue
-            
-            triple_name = "{0}_{1}_{2}".format(first_concept, second_concept, third_concept)
+            # compute the probabilities            
             
             # take care of "A AND B IMPLIES C"  
-            if count_pp[tuple_name] > 0:
-                p_and_p_impl_p = count_ppp[triple_name] / count_pp[tuple_name]
-                p_and_p_impl_n = count_ppn[triple_name] / count_pp[tuple_name]
+            if count_pp > 0:
+                p_and_p_impl_p = count_ppp / count_pp
+                p_and_p_impl_n = count_ppn / count_pp
 
                 rules['pANDpIMPLp'].append([p_and_p_impl_p, first_concept, second_concept, third_concept])
                 rules['pANDpIMPLn'].append([p_and_p_impl_n, first_concept, second_concept, third_concept])
 
-            if count_pn[tuple_name] > 0:
-                p_and_n_impl_p = count_pnp[triple_name] / count_pn[tuple_name]
-                p_and_n_impl_n = count_pnn[triple_name] / count_pn[tuple_name]
+            if count_pn > 0:
+                p_and_n_impl_p = count_pnp / count_pn
+                p_and_n_impl_n = count_pnn / count_pn
             
                 rules['pANDnIMPLp'].append([p_and_n_impl_p, first_concept, second_concept, third_concept])
                 rules['pANDnIMPLn'].append([p_and_n_impl_n, first_concept, second_concept, third_concept])
 
-            if count_np[tuple_name] > 0:
-                n_and_p_impl_p = count_npp[triple_name] / count_np[tuple_name]
-                n_and_p_impl_n = count_npn[triple_name] / count_np[tuple_name]
+            if count_np > 0:
+                n_and_p_impl_p = count_npp / count_np
+                n_and_p_impl_n = count_npn / count_np
 
                 rules['nANDpIMPLp'].append([n_and_p_impl_p, first_concept, second_concept, third_concept])
                 rules['nANDpIMPLn'].append([n_and_p_impl_n, first_concept, second_concept, third_concept])
 
-            if count_nn[tuple_name] > 0:
-                n_and_n_impl_p = count_nnp[triple_name] / count_nn[tuple_name]
-                n_and_n_impl_n = count_nnn[triple_name] / count_nn[tuple_name]
+            if count_nn > 0:
+                n_and_n_impl_p = count_nnp / count_nn
+                n_and_n_impl_n = count_nnn / count_nn
                        
                 rules['nANDnIMPLp'].append([n_and_n_impl_p, first_concept, second_concept, third_concept])
                 rules['nANDnIMPLn'].append([n_and_n_impl_n, first_concept, second_concept, third_concept])
             
             # take care of "A IMPLIES B OR C"
-            if count_p[first_concept] > 0:
+            if count_p > 0:
                 # size(B or C) = size(B) + size(not B and C) 
-                p_impl_p_or_p = (count_pp[tuple_name] + count_pnp[triple_name]) / count_p[first_concept] 
+                p_impl_p_or_p = (count_pp + count_pnp) / count_p 
                 # size(B or not C) = size(B) + size(not B and not C)
-                p_impl_p_or_n = (count_pp[tuple_name] + count_pnn[triple_name]) / count_p[first_concept]   
+                p_impl_p_or_n = (count_pp + count_pnn) / count_p   
                 # size(not B or C) = size(not B) + size(B and C)
-                p_impl_n_or_p = (count_pn[tuple_name] + count_ppp[triple_name]) / count_p[first_concept]  
+                p_impl_n_or_p = (count_pn + count_ppp) / count_p  
                 # size(not B or not C) = size(not B) + size(B and not C)
-                p_impl_n_or_n = (count_pn[tuple_name] + count_ppn[triple_name]) / count_p[first_concept]    
+                p_impl_n_or_n = (count_pn + count_ppn) / count_p    
             
                 rules['pIMPLpORp'].append([p_impl_p_or_p, first_concept, second_concept, third_concept])
                 rules['pIMPLpORn'].append([p_impl_p_or_n, first_concept, second_concept, third_concept])
                 rules['pIMPLnORp'].append([p_impl_n_or_p, first_concept, second_concept, third_concept])
                 rules['pIMPLnORn'].append([p_impl_n_or_n, first_concept, second_concept, third_concept])
             
-            if count_n[first_concept] > 0:
+            if count_n > 0:
                 # size(B or C) = size(B) + size(not B and C) 
-                n_impl_p_or_p = (count_np[tuple_name] + count_nnp[triple_name]) / count_n[first_concept]  
+                n_impl_p_or_p = (count_np + count_nnp) / count_n  
                 # size(B or not C) = size(B) + size(not B and not C)
-                n_impl_p_or_n = (count_np[tuple_name] + count_nnn[triple_name]) / count_n[first_concept]    
+                n_impl_p_or_n = (count_np + count_nnn) / count_n    
                 # size(not B or C) = size(not B) + size(B and C)
-                n_impl_n_or_p = (count_nn[tuple_name] + count_npp[triple_name]) / count_n[first_concept]    
+                n_impl_n_or_p = (count_nn + count_npp) / count_n    
                 # size(not B or not C) = size(not B) + size(B and not C)
-                n_impl_n_or_n = (count_nn[tuple_name] + count_npn[triple_name]) / count_n[first_concept]    
+                n_impl_n_or_n = (count_nn + count_npn) / count_n    
             
                 rules['nIMPLpORp'].append([n_impl_p_or_p, first_concept, second_concept, third_concept])
                 rules['nIMPLpORn'].append([n_impl_p_or_n, first_concept, second_concept, third_concept])
