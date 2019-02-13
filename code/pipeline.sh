@@ -12,7 +12,7 @@ python code/preprocessing/merge_all_data.py data/Ager/raw_files/num_stw_100_MDS.
 
 # split into training, validation, and test set
 echo 'split data'
-python code/preprocessing/split_data.py data/Ager/preprocessed/full_data_set.pickle data/Ager/preprocessed -t 0.2 -v 0.2 -s 42
+python code/preprocessing/split_data.py data/Ager/preprocessed/full_data_set.pickle data/Ager/preprocessed -t 0.2 -v 0.2 -s 42 -a
 
 # do rule counting
 if [ ! -f data/Ager/preprocessed/counts/central.pickle ]; then

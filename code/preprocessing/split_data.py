@@ -18,6 +18,7 @@ parser.add_argument('output_folder', help = 'path to output folder for the data 
 parser.add_argument('-t', '--test_size', type = float, help = 'percentage of data to use as test set', default = 0.2)
 parser.add_argument('-v', '--validation_size', type = float, help = 'percentage of data to use as validation set', default = 0.2)
 parser.add_argument('-s', '--seed', type = int, help = 'seed for random number generator', default = None)
+parser.add_argument('-a', '--analyze', action="store_true", help = 'display analysis of the three resulting data sets')
 parser.add_argument('-q', '--quiet', action="store_true", help = 'disables info output')                    
 args = parser.parse_args()
 
@@ -141,3 +142,79 @@ with open(os.path.join(args.output_folder, 'training_set.pickle'), 'wb') as f:
 
 if not args.quiet:
     print('    Stored {0} data points as training set (corresponds to {1}% of the overall data set)'.format(len(X_mds_train), 100 * (1 - args.validation_size - args.test_size)))
+
+# do an extra analysis
+if args.analyze and not args.quiet:
+    
+    def distinct_label_set(classifications):
+        """Computes the distinct label set of the given data set.
+        
+        How many distinct label combinations are there in the data set?"""
+    
+        label_sets = []   
+        for line in classifications:
+            label_sets.append(str(line))
+        
+        return len(set(label_sets))
+    
+    def proportion_of_distinct_label_set(classifications):
+        """Computes the proportion of distinct label set of the given data set.
+        
+        Distinct label set normalized by the total number of training instances."""
+        
+        return (1.0 * distinct_label_set(classifications)) / classifications.shape[0]
+    
+    def label_cardinality(classifications):
+        """Computes the label cardinality of the given data set.
+        
+        How many labels per example do we have on average?"""
+        
+        return np.mean(np.sum(classifications, axis = 1))        
+        
+    
+    def label_density(classifications):
+        """Computes the label density of the given data set.
+        
+        Label cardinality normalized by the total number of labels."""
+        
+        return (1.0 * label_cardinality(classifications)) / classifications.shape[1]
+    
+    def label_distribution(classifications):
+        """Computes the distribution of labels for the given data set.
+        
+        How often do the labels occur percentage-wise in the data set?"""
+        
+        counts = np.sum(classifications, axis = 0)
+        frequencies = counts / classifications.shape[0]        
+        
+        return frequencies
+
+    def analyze_subset(subset):
+        """Analyzes the given data subset."""
+        
+        y_all = subset['all_classifications']
+        y_keywords = subset['keyword_classifications']
+        y_genres = subset['genre_classifications']
+        y_ratings = subset['rating_classifications']
+        print('\t\tDistinct label set: {0} (keywords: {1}, genres: {2}, ratings: {3})'.format(distinct_label_set(y_all), 
+                          distinct_label_set(y_keywords), distinct_label_set(y_genres), distinct_label_set(y_ratings)))
+        print('\t\tProportion of distinct label set: {0} (keywords: {1}, genres: {2}, ratings: {3})'.format(proportion_of_distinct_label_set(y_all), 
+                          proportion_of_distinct_label_set(y_keywords), proportion_of_distinct_label_set(y_genres), proportion_of_distinct_label_set(y_ratings)))
+        print('\t\tLabel cardinality: {0} (keywords: {1}, genres: {2}, ratings: {3})'.format(label_cardinality(y_all), 
+                          label_cardinality(y_keywords), label_cardinality(y_genres), label_cardinality(y_ratings)))
+        print('\t\tLabel density: {0} (keywords: {1}, genres: {2}, ratings: {3})'.format(label_density(y_all), 
+                          label_density(y_keywords), label_density(y_genres), label_density(y_ratings)))
+        return label_distribution(y_all)
+    
+    print('\tAnalyzing training set')
+    frequencies_training = analyze_subset(training_set)
+    print('\tAnalyzing validation set')
+    frequencies_validation = analyze_subset(validation_set)
+    print('\tAnalyzing test set')
+    frequencies_test = analyze_subset(test_set)
+    
+    print('\tLabel frequencies:')
+    for label, freq_train, freq_valid, freq_test in zip(data_set['all_concepts'], frequencies_training, frequencies_validation, frequencies_test):
+        print('\t\t{0} \t- train: {1} - validation: {2} - test: {3}'.format(label, freq_train, freq_valid, freq_test))
+    
+                          
