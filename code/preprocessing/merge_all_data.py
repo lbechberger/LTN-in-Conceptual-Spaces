@@ -56,11 +56,15 @@ rating_map = [int(x) for x in rating_map]
 
 for rating_idx, item_idx in enumerate(rating_map):
     extended_rating_classifications[item_idx] = rating_classifications[rating_idx]
+
+all_concepts = keyword_labels + genre_labels + rating_labels
+all_classifications = np.concatenate((keyword_classifications, genre_classifications, extended_rating_classifications), axis = 1)
     
 output = {'mds_space' : mds_vectors, 'projected_space' : projected_vectors, 
           'keyword_labels' : keyword_labels, 'keyword_classifications' : keyword_classifications,
           'genre_labels' : genre_labels, 'genre_classifications' : genre_classifications,
-          'rating_labels' : rating_labels, 'rating_classifications' : extended_rating_classifications}
+          'rating_labels' : rating_labels, 'rating_classifications' : extended_rating_classifications,
+          'all_concepts' : all_concepts, 'all_classifications' : all_classifications}
 
 with open(os.path.join(args.output_folder, 'full_data_set.pickle'), 'wb') as f:
     pickle.dump(output, f)    
