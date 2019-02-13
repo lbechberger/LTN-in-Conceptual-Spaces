@@ -1,14 +1,17 @@
+# preprocessed data
+data/Ager/preprocessed/*
+
 # original Schockaert data
 data/Schockaert/raw
 data/Schockaert-projected/raw
-/data/Schockaert-projected/features_100.csv
-/data/Schockaert-projected/features_40.csv
-/data/Schockaert-projected/features_200.csv
-/data/Schockaert-projected/features_400.csv
-/data/Schockaert/features_100.csv
-/data/Schockaert/features_20.csv
-/data/Schockaert/features_200.csv
-/data/Schockaert/features_50.csv
+data/Schockaert-projected/features_100.csv
+data/Schockaert-projected/features_40.csv
+data/Schockaert-projected/features_200.csv
+data/Schockaert-projected/features_400.csv
+data/Schockaert/features_100.csv
+data/Schockaert/features_20.csv
+data/Schockaert/features_200.csv
+data/Schockaert/features_50.csv
 
 # experiment outputs
 output/

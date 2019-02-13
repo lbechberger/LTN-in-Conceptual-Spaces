@@ -24,12 +24,6 @@ args = parser.parse_args()
 # load data set
 data_set = pickle.load(open(args.input_file, 'rb'))
 
-#output = {'mds_space' : mds_vectors, 'projected_space' : projected_vectors, 
-#          'keyword_labels' : keyword_labels, 'keyword_classifications' : keyword_classifications,
-#          'genre_labels' : genre_labels, 'genre_classifications' : genre_classifications,
-#          'rating_labels' : rating_labels, 'rating_classifications' : extended_rating_classifications,
-#          'all_concepts' : all_concepts, 'all_classifications' : all_classifications}
-
 # first split: testing and rest
 first_split = train_test_split(data_set['mds_space'], data_set['projected_space'], 
                                data_set['keyword_classifications'], data_set['genre_classifications'], 

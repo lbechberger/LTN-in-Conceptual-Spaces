@@ -7,11 +7,12 @@ Created on Mon Feb 11 15:04:57 2019
 @author: lbechberger
 """
 
-import argparse, pickle
+import argparse, pickle, os
 
 # parse command line arguments
 parser = argparse.ArgumentParser(description='rule extraction based on label counting')                  
 parser.add_argument('input_file', help = 'path to the input pickle file')
+parser.add_argument('-o', '--output_folder', help = 'path to output folder for the rule files', default = '.')                
 parser.add_argument('-s', '--support', type = float, help = 'threshold for rule support', default = 0.01)
 parser.add_argument('-i', '--improvement', type = float, help = 'threshold for rule improvement', default = 0.1)  
 parser.add_argument('-c', '--confidence', type = float, help = 'threshold for rule confidence', default = 0.9)                
@@ -19,7 +20,7 @@ parser.add_argument('-q', '--quiet', action="store_true", help = 'disables info 
 args = parser.parse_args()
 
 if not args.quiet:
-    print("Loading data ...")
+    print("\tLoading data ...")
 # import data
 data = pickle.load(open(args.input_file, 'rb'))
 rule_types = data['rule_types']
@@ -28,7 +29,7 @@ rule_strings = data['rule_strings']
 rules = {}
 for rule_type in rule_types:
     if not args.quiet:
-        print("... {0}".format(rule_type))
+        print("\t... {0}".format(rule_type))
 
     file_name = args.input_file.replace('central', rule_type)
     rules[rule_type] = pickle.load(open(file_name, 'rb'))
@@ -39,7 +40,7 @@ epsilon = 1e-10
 def filter_improvement(complex_rule_type, simple_rule_type_one, simple_rule_type_two, filter_type):
 
     if not args.quiet:
-        print("... {0}".format(complex_rule_type))
+        print("\t... {0}".format(complex_rule_type))
 
     for rule, values in rules[complex_rule_type].copy().items():
         
@@ -63,26 +64,19 @@ def filter_improvement(complex_rule_type, simple_rule_type_one, simple_rule_type
 
 # filter out rules with poor improvement
 if not args.quiet:
-    print("Filtering AND rules for improvement ...")
+    print("\tFiltering AND rules for improvement ...")
 
 filter_improvement('pANDpIMPLp', 'pIMPLp', 'pIMPLp', 'and')
-filter_improvement('pANDpIMPLn', 'pIMPLn', 'pIMPLn', 'and')
 filter_improvement('pANDnIMPLp', 'pIMPLp', 'nIMPLp', 'and')
-filter_improvement('pANDnIMPLn', 'pIMPLn', 'nIMPLn', 'and')
 filter_improvement('nANDnIMPLp', 'nIMPLp', 'nIMPLp', 'and')
-filter_improvement('nANDnIMPLn', 'nIMPLn', 'nIMPLn', 'and')
 
 if not args.quiet:
-    print("Filtering OR rules for improvement ...")
+    print("\tFiltering OR rules for improvement ...")
 filter_improvement('pIMPLpORp', 'pIMPLp', 'pIMPLp', 'or')
-filter_improvement('pIMPLpORn', 'pIMPLp', 'pIMPLn', 'or')
-filter_improvement('pIMPLnORn', 'pIMPLn', 'pIMPLn', 'or')
 filter_improvement('nIMPLpORp', 'nIMPLp', 'nIMPLp', 'or')
-filter_improvement('nIMPLpORn', 'nIMPLp', 'nIMPLn', 'or')
-filter_improvement('nIMPLnORn', 'nIMPLn', 'nIMPLn', 'or')
 
 if not args.quiet:
-    print("Filtering all rules for support ...")
+    print("\tFiltering all rules for support ...")
 
 # filter out rules with insufficient support
 for rule_type in rule_types:
@@ -91,7 +85,7 @@ for rule_type in rule_types:
             del rules[rule_type][rule]
 
 if not args.quiet:
-    print("Filtering all rules for confidence ...")
+    print("\tFiltering all rules for confidence ...")
 # filter out rules with insufficient confidence
 for rule_type in rule_types:
     for rule, values in rules[rule_type].copy().items():
@@ -99,37 +93,38 @@ for rule_type in rule_types:
             del rules[rule_type][rule]
 
 # define names of output files
-summary_output_file = "output/rules-{0}-{1}-{2}.csv".format(args.support, args.improvement, args.confidence)
-rules_output_template = "output/rules/{0}.csv"
+summary_output_file = os.path.join(args.output_folder, "rules-{0}-{1}-{2}.csv".format(args.support, args.improvement, args.confidence))
+rules_output_template = os.path.join(args.output_folder, "{0}.csv")
 
-output_strings = ['rule_type,confidence_threshold,num_rules\n']
+output_strings = ['rule_type,num_rules\n']
 
 if not args.quiet:
-    print("Evaluating the rules ...")
+    print("\tEvaluating the rules ...")
 
 for rule_type, rule_instances in rules.items():
 
     # print length of list     
     if not args.quiet:
-        print("Number of rules of type {0} left for support {1}, confidence {2}, improvement {3}: {4} ".format(rule_type, args.support, args.confidence, args.improvement,
+        print("\t\tNumber of rules of type {0} left for support {1}, confidence {2}, improvement {3}: {4} ".format(rule_type, args.support, args.confidence, args.improvement,
               len(rule_instances.keys())))
     
     # store for output into file
-    output_strings.append(",".join([rule_type, str(args.confidence), str(len(rule_instances.keys()))]) + '\n')
+    output_strings.append(",".join([rule_type, str(len(rule_instances.keys()))]) + '\n')
     
-    # write resulting rules into file
-    rules_file_name =  rules_output_template.format(rule_type)
-    with open(rules_file_name, 'w') as f:
-        f.write("rule,support,confidence\n")
-        for rule_string, rule_content in rule_instances.items():
-            if len(rule_content) == 4:
-                rule_string = rule_strings[rule_type].format(rule[2], rule[3])
-            elif len(rule_content) == 5:
-                rule_string = rule_strings[rule_type].format(rule[2], rule[3], rule[4])
-            else:
-                raise(Exception("invalid length of rule information"))
-            line = "{0},{1},{2}\n".format(rule_string, rule[0], rule[1])
-            f.write(line)
+    if len(rule_instances.keys()) > 0:
+        # write resulting rules into file
+        rules_file_name =  rules_output_template.format(rule_type)
+        with open(rules_file_name, 'w') as f:
+            f.write("rule,support,confidence\n")
+            for rule_string, rule_content in rule_instances.items():
+                if len(rule_content) == 4:
+                    output_rule_string = rule_strings[rule_type].format(rule_content[2], rule_content[3])
+                elif len(rule_content) == 5:
+                    output_rule_string = rule_strings[rule_type].format(rule_content[2], rule_content[3], rule_content[4])
+                else:
+                    raise(Exception("invalid length of rule information"))
+                line = "{0},{1},{2}\n".format(output_rule_string, rule_content[0], rule_content[1])
+                f.write(line)
     
     if not args.quiet:
         print("")
