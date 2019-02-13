@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # create necessary directories
-mkdir -p data/Ager/preprocessed data/Ager/preprocessed/counts data/Ager/preprocessed/rules
+mkdir -p data/Ager/preprocessed data/Ager/preprocessed/counts data/Ager/preprocessed/rules-strict data/Ager/preprocessed/rules-lean
 
 # PREPROCESSING
 echo 'PREPROCESSING'
@@ -22,5 +22,7 @@ else
 	echo 'count files already exist; using existing files'
 fi
 
-echo 'extracting rules'
-python code/preprocessing/extract_rules.py data/Ager/preprocessed/counts/central.pickle -s 0.01 -i 0.1 -c 0.9 -o data/Ager/preprocessed/rules
+echo 'extracting strict rules'
+python code/preprocessing/extract_rules.py data/Ager/preprocessed/counts/central.pickle -s 0.01 -i 0.1 -c 0.9 -o data/Ager/preprocessed/rules-strict
+echo 'extracting lean rules'
+python code/preprocessing/extract_rules.py data/Ager/preprocessed/counts/central.pickle -s 0.005 -i 0.05 -c 0.8 -o data/Ager/preprocessed/rules-lean
