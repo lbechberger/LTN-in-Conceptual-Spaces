@@ -62,21 +62,6 @@ def filter_improvement(complex_rule_type, simple_rule_type_one, simple_rule_type
         if improvement - 1 < args.improvement:
             del rules[complex_rule_type][rule]
 
-# remove duplicate entries from complex rule types
-def filter_duplicates(complex_rule_type, filter_type):
-
-    if filter_type == 'and':
-        first_index, second_index = 2, 3
-    elif filter_type == 'or':
-        first_index, second_index = 3, 4
-    else:
-        raise Exception('invalid filter type')
-    
-    for rule, values in rules[complex_rule_type].copy().items():
-        # keep only rules for which the order of concepts is in alphabetical order        
-        if values[first_index] > values[second_index]:
-            del rules[complex_rule_type][rule]
-
 # filter out rules with poor improvement
 if not args.quiet:
     print("\tFiltering AND rules for improvement ...")
@@ -106,14 +91,6 @@ for rule_type in rule_types:
     for rule, values in rules[rule_type].copy().items():
         if values[1] < args.confidence:
             del rules[rule_type][rule]
-
-# filter out duplicate rules 
-if not args.quiet:
-    print("\tFiltering complex rules for duplications ...")
-filter_duplicates('pANDpIMPLp', 'and')
-filter_duplicates('nANDnIMPLp', 'and')
-filter_duplicates('pIMPLpORp', 'or')
-filter_duplicates('nIMPLpORp', 'or')
 
 # define names of output files
 summary_output_file = os.path.join(args.output_folder, "rules-{0}-{1}-{2}.csv".format(args.support, args.improvement, args.confidence))

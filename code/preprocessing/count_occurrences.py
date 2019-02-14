@@ -113,31 +113,33 @@ for first_concept in all_concepts:
             count_nnp = np.sum(classifications_nn[:,third_idx])
             count_nnn = len(classifications_nn) - count_nnp
             
-            # compute the probabilities            
+            # compute the probabilities - only for well-ordered pairs (in order to avoid duplications)           
             
-            # take care of "A AND B IMPLIES C"  
-            if count_pp > 0:
-                p_and_p_impl_p = count_ppp / count_pp
-                store_rule('pANDpIMPLp', count_pp, p_and_p_impl_p, [first_concept, second_concept, third_concept])
+            if first_concept < second_concept:
+                # take care of "A AND B IMPLIES C"  
+                if count_pp > 0:
+                    p_and_p_impl_p = count_ppp / count_pp
+                    store_rule('pANDpIMPLp', count_pp, p_and_p_impl_p, [first_concept, second_concept, third_concept])
+                    
+                if count_pn > 0:
+                    p_and_n_impl_p = count_pnp / count_pn
+                    store_rule('pANDnIMPLp', count_pn, p_and_n_impl_p, [first_concept, second_concept, third_concept])
+    
+                if count_nn > 0:
+                    n_and_n_impl_p = count_nnp / count_nn
+                    store_rule('nANDnIMPLp', count_nn, n_and_n_impl_p, [first_concept, second_concept, third_concept])
+            
+            if second_concept < third_concept:
+                # take care of "A IMPLIES B OR C"
+                if count_p > 0:
+                    # size(B or C) = size(B) + size(not B and C) 
+                    p_impl_p_or_p = (count_pp + count_pnp) / count_p 
+                    store_rule('pIMPLpORp', count_p, p_impl_p_or_p, [first_concept, second_concept, third_concept])
                 
-            if count_pn > 0:
-                p_and_n_impl_p = count_pnp / count_pn
-                store_rule('pANDnIMPLp', count_pn, p_and_n_impl_p, [first_concept, second_concept, third_concept])
-
-            if count_nn > 0:
-                n_and_n_impl_p = count_nnp / count_nn
-                store_rule('nANDnIMPLp', count_nn, n_and_n_impl_p, [first_concept, second_concept, third_concept])
-            
-            # take care of "A IMPLIES B OR C"
-            if count_p > 0:
-                # size(B or C) = size(B) + size(not B and C) 
-                p_impl_p_or_p = (count_pp + count_pnp) / count_p 
-                store_rule('pIMPLpORp', count_p, p_impl_p_or_p, [first_concept, second_concept, third_concept])
-            
-            if count_n > 0:
-                # size(B or C) = size(B) + size(not B and C) 
-                n_impl_p_or_p = (count_np + count_nnp) / count_n  
-                store_rule('nIMPLpORp', count_n, n_impl_p_or_p, [first_concept, second_concept, third_concept])
+                if count_n > 0:
+                    # size(B or C) = size(B) + size(not B and C) 
+                    n_impl_p_or_p = (count_np + count_nnp) / count_n  
+                    store_rule('nIMPLpORp', count_n, n_impl_p_or_p, [first_concept, second_concept, third_concept])
 
 central_output = {'rule_types' : rule_types, 'rule_strings' : rule_strings}
 
