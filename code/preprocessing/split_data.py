@@ -217,4 +217,11 @@ if args.analyze and not args.quiet:
     for label, freq_train, freq_valid, freq_test in zip(data_set['all_concepts'], frequencies_training, frequencies_validation, frequencies_test):
         print('\t\t{0} \t- train: {1} - validation: {2} - test: {3}'.format(label, freq_train, freq_valid, freq_test))
     
+    from matplotlib import pyplot as plt
+    for frequencies, set_name in [(frequencies_training, 'training'), (frequencies_validation, 'validation'), (frequencies_test, 'test')]:   
+        plt.hist(frequencies)
+        plt.title('distribution of label frequencies in {0} set'.format(set_name))
+        output_file_name = os.path.join(args.output_folder, '{0}.png'.format(set_name))
+        plt.savefig(output_file_name)
+        plt.close()
                           
