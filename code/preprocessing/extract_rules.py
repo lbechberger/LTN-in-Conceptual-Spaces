@@ -36,6 +36,12 @@ for rule_type in rule_types:
 
 epsilon = 1e-10
 
+# return confidence if exists, otherwise zero
+def get_confidence(rule_type, rule_string):
+    if rule_string in rules[rule_type]:
+        return rules[rule_type][rule_string][1]
+    return 0
+
 # filter for rule improvements
 def filter_improvement(complex_rule_type, simple_rule_type_one, simple_rule_type_two, filter_type):
 
@@ -47,11 +53,11 @@ def filter_improvement(complex_rule_type, simple_rule_type_one, simple_rule_type
         complex_confidence = values[1]
         
         if filter_type == 'and':
-            first_confidence = rules[simple_rule_type_one]["_".join([values[2], values[4]])][1]
-            second_confidence = rules[simple_rule_type_two]["_".join([values[3], values[4]])][1]
+            first_confidence = get_confidence(simple_rule_type_one, "_".join([values[2], values[4]]))
+            second_confidence = get_confidence(simple_rule_type_two, "_".join([values[3], values[4]]))
         elif filter_type == 'or':
-            first_confidence = rules[simple_rule_type_one]["_".join([values[2], values[3]])][1]
-            second_confidence = rules[simple_rule_type_two]["_".join([values[2], values[4]])][1]
+            first_confidence = get_confidence(simple_rule_type_one, "_".join([values[2], values[3]]))
+            second_confidence = get_confidence(simple_rule_type_two, "_".join([values[2], values[4]]))
         else:
             raise Exception('invalid filter type')
         
@@ -61,20 +67,6 @@ def filter_improvement(complex_rule_type, simple_rule_type_one, simple_rule_type
         
         if improvement - 1 < args.improvement:
             del rules[complex_rule_type][rule]
-
-# filter out rules with poor improvement
-if not args.quiet:
-    print("\tFiltering AND rules for improvement ...")
-
-filter_improvement('pANDpIMPLp', 'pIMPLp', 'pIMPLp', 'and')
-filter_improvement('pANDnIMPLp', 'pIMPLp', 'nIMPLp', 'and')
-filter_improvement('nANDnIMPLp', 'nIMPLp', 'nIMPLp', 'and')
-
-if not args.quiet:
-    print("\tFiltering OR rules for improvement ...")
-filter_improvement('pIMPLpORp', 'pIMPLp', 'pIMPLp', 'or')
-filter_improvement('nIMPLpORp', 'nIMPLp', 'nIMPLp', 'or')
-
 
 # filter out rules with insufficient support
 if not args.quiet:
@@ -91,6 +83,20 @@ for rule_type in rule_types:
     for rule, values in rules[rule_type].copy().items():
         if values[1] < args.confidence:
             del rules[rule_type][rule]
+
+# filter out rules with poor improvement
+if not args.quiet:
+    print("\tFiltering AND rules for improvement ...")
+
+filter_improvement('pANDpIMPLp', 'pIMPLp', 'pIMPLp', 'and')
+filter_improvement('pANDnIMPLp', 'pIMPLp', 'nIMPLp', 'and')
+filter_improvement('nANDnIMPLp', 'nIMPLp', 'nIMPLp', 'and')
+
+if not args.quiet:
+    print("\tFiltering OR rules for improvement ...")
+filter_improvement('pIMPLpORp', 'pIMPLp', 'pIMPLp', 'or')
+filter_improvement('nIMPLpORp', 'nIMPLp', 'nIMPLp', 'or')
+
 
 # define names of output files
 summary_output_file = os.path.join(args.output_folder, "rules-{0}-{1}-{2}.csv".format(args.support, args.improvement, args.confidence))
