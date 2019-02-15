@@ -213,9 +213,16 @@ if args.analyze and not args.quiet:
     print('\tAnalyzing test set')
     frequencies_test = analyze_subset(test_set)
     
-    print('\tLabel frequencies:')
-    for label, freq_train, freq_valid, freq_test in zip(data_set['all_concepts'], frequencies_training, frequencies_validation, frequencies_test):
-        print('\t\t{0} \t- train: {1} - validation: {2} - test: {3}'.format(label, freq_train, freq_valid, freq_test))
+    label_frequencies_file_name = os.path.join(args.output_folder, 'frequencies.txt')
+    with open(label_frequencies_file_name, 'w') as f:
+        for label, freq_train, freq_valid, freq_test in zip(data_set['all_concepts'], frequencies_training, frequencies_validation, frequencies_test):
+            f.write('\t\concept{')
+            f.write(label)
+            f.write('}')
+            f.write('\t& {0} \t& {1} \t& {2}'.format(freq_train, freq_valid, freq_test))
+            f.write('\t\\\\ \hline\n')
+    print('\tLabel frequencies can be found in LaTeX format in file {0}'.format(label_frequencies_file_name))
+        
     
     from matplotlib import pyplot as plt
     for frequencies, set_name in [(frequencies_training, 'training'), (frequencies_validation, 'validation'), (frequencies_test, 'test')]:   
@@ -224,4 +231,5 @@ if args.analyze and not args.quiet:
         output_file_name = os.path.join(args.output_folder, '{0}.png'.format(set_name))
         plt.savefig(output_file_name)
         plt.close()
-                          
+    print('\tHistograms of label frequencies have been plotted into files')
+                         
