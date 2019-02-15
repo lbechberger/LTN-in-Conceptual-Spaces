@@ -219,7 +219,7 @@ if args.analyze and not args.quiet:
             f.write('\t\concept{')
             f.write(label)
             f.write('}')
-            f.write('\t& {0} \t& {1} \t& {2}'.format(freq_train, freq_valid, freq_test))
+            f.write('\t& {0:.4f} \t& {1:.4f} \t& {2:.4f}'.format(freq_train, freq_valid, freq_test))
             f.write('\t\\\\ \hline\n')
     print('\tLabel frequencies can be found in LaTeX format in file {0}'.format(label_frequencies_file_name))
         
