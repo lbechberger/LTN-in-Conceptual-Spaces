@@ -46,10 +46,9 @@ for rule_type in rule_types:
 
 def store_rule(rule_name, support, probability, concepts):
     """Stores the given rule in the dictionary (converting probability to confidence)."""
-    confidence = (probability - 0.5) * 2
     tuple_name = '_'.join(concepts)
     relative_support = support / len(all_classifications)
-    rules[rule_name][tuple_name] = [relative_support, confidence] + concepts
+    rules[rule_name][tuple_name] = [relative_support, probability] + concepts
 
 for first_concept in all_concepts:
     if not args.quiet:

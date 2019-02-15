@@ -68,20 +68,28 @@ def filter_improvement(complex_rule_type, simple_rule_type_one, simple_rule_type
         if improvement - 1 < args.improvement:
             del rules[complex_rule_type][rule]
 
+def filter_too_complex(complex_rule_type, simple_rule_type_one, simple_rule_type_two, filter_type):
+
+    for rule, values in rules[complex_rule_type].copy().items():
+        
+        if filter_type == 'and':
+            first_exists = "_".join([values[2], values[4]]) in rules[simple_rule_type_one]
+            second_exists = "_".join([values[3], values[4]]) in rules[simple_rule_type_two]
+        elif filter_type == 'or':
+            first_exists = "_".join([values[2], values[3]]) in rules[simple_rule_type_one]
+            second_exists = "_".join([values[2], values[4]]) in rules[simple_rule_type_two]
+        else:
+            raise Exception('invalid filter type')
+        
+        if first_exists or second_exists:
+            del rules[complex_rule_type][rule]
+
 # filter out rules with insufficient support
 if not args.quiet:
     print("\tFiltering all rules for support ...")
 for rule_type in rule_types:
     for rule, values in rules[rule_type].copy().items():
         if values[0] < args.support:
-            del rules[rule_type][rule]
-
-# filter out rules with insufficient confidence
-if not args.quiet:
-    print("\tFiltering all rules for confidence ...")
-for rule_type in rule_types:
-    for rule, values in rules[rule_type].copy().items():
-        if values[1] < args.confidence:
             del rules[rule_type][rule]
 
 # filter out rules with poor improvement
@@ -96,6 +104,23 @@ if not args.quiet:
     print("\tFiltering OR rules for improvement ...")
 filter_improvement('pIMPLpORp', 'pIMPLp', 'pIMPLp', 'or')
 filter_improvement('nIMPLpORp', 'nIMPLp', 'nIMPLp', 'or')
+            
+# filter out rules with insufficient confidence
+if not args.quiet:
+    print("\tFiltering all rules for confidence ...")
+for rule_type in rule_types:
+    for rule, values in rules[rule_type].copy().items():
+        if values[1] < args.confidence:
+            del rules[rule_type][rule]
+
+# fiter out complex rules with simpler alternatives
+if not args.quiet:
+    print("\tFiltering rules for simpler alternatives ...")
+filter_too_complex('pANDpIMPLp', 'pIMPLp', 'pIMPLp', 'and')
+filter_too_complex('pANDnIMPLp', 'pIMPLp', 'nIMPLp', 'and')
+filter_too_complex('nANDnIMPLp', 'nIMPLp', 'nIMPLp', 'and')
+filter_too_complex('pIMPLpORp', 'pIMPLp', 'pIMPLp', 'or')
+filter_too_complex('nIMPLpORp', 'nIMPLp', 'nIMPLp', 'or')
 
 
 # define names of output files
@@ -107,12 +132,14 @@ output_strings = ['rule_type,num_rules\n']
 if not args.quiet:
     print("\tEvaluating the rules ...")
 
+total_number_of_rules = 0
 for rule_type, rule_instances in rules.items():
 
     # print length of list     
     if not args.quiet:
         print("\t\tNumber of rules of type {0} left for support {1}, confidence {2}, improvement {3}: {4} ".format(rule_type, args.support, args.confidence, args.improvement,
               len(rule_instances.keys())))
+    total_number_of_rules += len(rule_instances.keys())
     
     # store for output into file
     output_strings.append(",".join([rule_type, str(len(rule_instances.keys()))]) + '\n')
@@ -131,10 +158,10 @@ for rule_type, rule_instances in rules.items():
                     raise(Exception("invalid length of rule information"))
                 line = "{0},{1},{2}\n".format(output_rule_string, rule_content[0], rule_content[1])
                 f.write(line)
-    
-    if not args.quiet:
-        print("")
+if not args.quiet:
+    print("Total number of rules: {0}".format(total_number_of_rules))
 
+    
 with open(summary_output_file, 'w') as f:
     for line in output_strings:
         f.write(line)    
