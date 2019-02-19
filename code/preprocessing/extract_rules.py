@@ -158,8 +158,8 @@ for rule_type, rule_instances in rules.items():
                     raise(Exception("invalid length of rule information"))
                 line = "{0},{1},{2}\n".format(output_rule_string, rule_content[0], rule_content[1])
                 f.write(line)
-if not args.quiet:
-    print("Total number of rules: {0}".format(total_number_of_rules))
+
+print("Support {0}, Confidence {1}, Improvement {2}, Total number of rules: {3}".format(args.support, args.confidence, args.improvement, total_number_of_rules))
 
     
 with open(summary_output_file, 'w') as f:
