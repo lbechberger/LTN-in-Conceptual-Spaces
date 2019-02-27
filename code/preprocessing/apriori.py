@@ -28,7 +28,7 @@ positive_concepts = data_set['all_concepts']
 positive_classifications = data_set['all_classifications']
 
 negative_classifications = 1 - positive_classifications
-negative_concepts = ['NOT {0}'.format(concept) for concept in positive_concepts]
+negative_concepts = ['~{0}'.format(concept) for concept in positive_concepts]
 
 all_concepts = positive_concepts + negative_concepts
 all_classifications = np.concatenate([positive_classifications, negative_classifications], axis = 1)
@@ -37,24 +37,25 @@ all_classifications = np.concatenate([positive_classifications, negative_classif
 frequent_itemsets = {}
 supports = {}
 size_of_data_set = all_classifications.shape[0]
-concept_frequencies = np.sum(all_classifications, axis = 0) / size_of_data_set
 
+# compute starting point manually
+concept_frequencies = np.sum(all_classifications, axis = 0) / size_of_data_set
 supports[1] = concept_frequencies[concept_frequencies >= args.support]
 frequent_itemsets[1] = np.arange(len(all_concepts))[concept_frequencies >= args.support].reshape(-1, 1)
 
-# helper functions
+# helper function for generating candidate item sets
 def generate_candidates(old_itemsets, last_iteration):
-    candidates = []
     individual_items = np.unique(old_itemsets.flatten())
     for old_itemset in old_itemsets:
         for individual_item in individual_items:
+            # try to expand each of the old itemsets with each of the feasible concepts
+            # the ordering constraint here only makes sure that no combination is generated twice
             if individual_item > max(old_itemset):
                 new_candidate = tuple(old_itemset) + (individual_item,)
                 # if we're in the last iteration: discard all sets with only negative literals (won't be used anyways)
                 if last_iteration and min(new_candidate) >= len(positive_concepts):
                     continue
-                candidates.append(new_candidate)
-    return candidates
+                yield new_candidate
 
 
 # run apriori algorithm
@@ -66,20 +67,16 @@ for k in range(2, args.limit + 1):
     new_frequent_itemsets = []    
     new_supports = []
 
-    if not args.quiet:
-        print("\t\tGenerating candidates")
-    
+    # generate candidates
     candidates = generate_candidates(frequent_itemsets[k - 1], k == args.limit)   
     
-    if not args.quiet:
-        output_step_size = int(len(candidates)/10)
-    
+    # filter candidates for minimal support
     for idx, candidate in enumerate(candidates):
         
-        if not args.quiet and idx % output_step_size == 0:
-            print("\t\tEvaluating candidate {0} of {1} ({2}%)".format(idx, len(candidates), 100 * idx / len(candidates)))
+        if not args.quiet and idx % (10**6) == 0:
+            print("\t\tEvaluating candidate {0}".format(idx))
        
-       # take all rows for which all specified columns are set to true
+        # take all rows for which all specified columns are set to true
         support = all_classifications[:, candidate].all(axis = 1).sum() / size_of_data_set
         if support >= args.support:
             new_frequent_itemsets.append(candidate)
@@ -88,6 +85,7 @@ for k in range(2, args.limit + 1):
     if len(new_frequent_itemsets) == 0:
         break
     
+    # store results locally
     if not args.quiet:
         print("\t\tkept {0} itemsets".format(len(new_frequent_itemsets)))
     frequent_itemsets[k] = np.array(new_frequent_itemsets)
@@ -95,5 +93,5 @@ for k in range(2, args.limit + 1):
 
 # dump results into pickle file
 central_output = {'itemsets': frequent_itemsets, 'supports': supports, 'concepts': all_concepts, 'border': len(positive_concepts)}
-with open(os.path.join(args.output_folder, 'central.pickle'), 'wb') as f:
+with open(os.path.join(args.output_folder, 'frequent_itemsets.pickle'), 'wb') as f:
     pickle.dump(central_output, f)
