@@ -1,10 +1,13 @@
 #!/bin/bash
 #$ -N preprocessing
-#$ -l mem=12G
+#$ -l mem=16G
 #$ -cwd
 #$ -pe default 2
 #$ -o $HOME/store/sge-logs
 #$ -e $HOME/store/sge-logs
+
+export PATH="/net/projects/scratch/winter/valid_until_31_July_2019/lbechberger/miniconda/bin:$PATH"
+rm /tmp/* -R -f 2> /dev/null
 
 source activate tensorflow-CS
 
@@ -36,3 +39,5 @@ fi
 #python code/preprocessing/extract_rules.py data/Ager/preprocessed/counts/central.pickle -s 0.005 -i 0.05 -c 0.8 -o data/Ager/preprocessed/rules-lean
 
 source deactivate tensorflow-CS
+
+rm /tmp/* -R -f 2> /dev/null
