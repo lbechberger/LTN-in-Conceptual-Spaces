@@ -29,7 +29,7 @@ python code/preprocessing/split_data.py data/Ager/preprocessed/full_data_set.pic
 # do rule counting
 if [ ! -f data/Ager/preprocessed/frequent_itemsets.pickle ]; then
     	echo 'running apriori to find frequent itemsets'
-	python code/preprocessing/apriori.py data/Ager/preprocessed/training_set.pickle -o data/Ager/preprocessed/ -s 0.008 -l 4
+	python -u code/preprocessing/apriori.py data/Ager/preprocessed/training_set.pickle -o data/Ager/preprocessed/ -s 0.008 -l 4
 else
 	echo 'frequent itemsets already exist; using existing file'
 fi
