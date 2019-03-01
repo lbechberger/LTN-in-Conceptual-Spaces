@@ -1,5 +1,5 @@
 #!/bin/bash
-#$ -N preprocessing
+#$ -N rules
 #$ -l mem=32G
 #$ -l h_rt=72:00:00
 #$ -cwd
