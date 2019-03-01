@@ -1,6 +1,0 @@
-apple
-banana
-GrannySmith
-lemon
-orange
-pear

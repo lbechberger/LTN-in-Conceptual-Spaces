@@ -57,6 +57,8 @@ The script creates one pickle file for each of the created subsets and stores th
 
 The rule extraction consists of two steps: First, the apriori algorithm is applied in order to find frequent item sets. Afterwards, we use these frequent item sets to define logical rules.
 
+#### Collecting Frequent Item Sets with Apriori
+
 The script `code/preprocessing/apriori.py` runs the apriori algorithm on our data set and stores all frequent item sets along with their support in a pickle file for later use. It can be invoked as follows (where `input_file.pickle` can either be the overall data set or any of the subsets created in the previous step):
 ```
 python code/preprocessing/apriori.py path/to/input_file.pickle
@@ -72,6 +74,10 @@ The script creates an ouput pickle file, containinga a dictionary with the follo
 - `supports`: A dictionary mapping from the size of the item set to a list of the support values (sorted in same way as `itemsets`).
 - `concepts`: A list of all concepts under consideration (original concepts and negated concepts).
 - `border`: Integer specifying the border between positive and negative literals. `concepts[:border]` contains only positive literals and `concepts[border:]` contains only negative literals.
+
+Please note that the script `apriori.py` might take very long to run and might consume a large amount of memory depending on the value of `--limit`: For `--limit 4` we found that 16 GB and 8 hours runtime did not suffice to complete computing all the frequent itemsets. The resulting pickle file is 3.3 GB large. If you just want a quick & dirty run, we recommend `--limit 3`, which takes less than 30 minutes and runs fine with 8 GB of main memory.
+
+#### Extracting Association Rules form Frequent Item Sets
 
 The script `code/preprocessing/extract_rules.py` takes the output of `apriori.py` as an input and extracts association rules from the given frequent item sets. It can be invoked as follows:
 ```
