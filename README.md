@@ -87,6 +87,7 @@ It takes the following optional arguments:
 - `-o` or `--output_folder`: Path to the folder where the resulting rules should be stored. Defaults to `.`, i.e., the current working directory.
 - `-s` or `--support`: The minimal antecedent support for the rules. Defaults to 0.01 (i.e., 1 %). Only rules whose antecedent applies to at least this fraction of the data set are considered.
 - `-c` or `--confidence`: The minimal confidence for the rules. Defaults to 0.8 (i.e., 80 %). Only rules that reach this minimal confidence are considered.
+- `-d` or `--dynamic`: If this flag is set, the confidence threshold is dynamically adapted for larger rules: Rules with `n+1` tokens need to have a higher confidence than rules with `n` tokens. The update is done by halving the distance between the current confidence level and 1 (e.g, for a starting value of 0.8, we next need 0.9, next 0.95, next 0.975, ...).
 - `-q` or `--quiet`: If this flag is set, informational output during processing is supressed.
 
 This script creates multiple CSV files as output. One overall summary file contains information about how many rules of which type have been extracted. For each rule type (specified by the number of literals in the overall rule and the number of literals in the antecedent), an individual file containing all the individual rules of this type (along with their support and confidence) is created.

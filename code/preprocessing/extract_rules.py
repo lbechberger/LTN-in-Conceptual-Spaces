@@ -17,8 +17,9 @@ parser = argparse.ArgumentParser(description='rule extraction based on label cou
 parser.add_argument('input_file', help = 'path to the input pickle file')
 parser.add_argument('-o', '--output_folder', help = 'path to output folder for the rule files', default = '.')                
 parser.add_argument('-s', '--support', type = float, help = 'threshold for antecedent support', default = 0.01)
-parser.add_argument('-c', '--confidence', type = float, help = 'threshold for rule confidence', default = 0.9)                
-parser.add_argument('-q', '--quiet', action="store_true", help = 'disables info output')                    
+parser.add_argument('-c', '--confidence', type = float, help = 'threshold for rule confidence', default = 0.9)
+parser.add_argument('-d', '--dynamic', action = 'store_true', help = 'dynamically adapt confidence threshold')
+parser.add_argument('-q', '--quiet', action = 'store_true', help = 'disables info output')
 args = parser.parse_args()
 
 # import data
@@ -42,13 +43,16 @@ def rule_string(antecedent, consequent):
     consequent_string = ' | '.join(map(lambda x: "{0}(?x)".format(concepts[x]), consequent))
     return "forall ?x: {0} -> {1}".format(antecedent_string, consequent_string)
 
+# start with given confidence
+confidence_threshold = args.confidence
+
 for size in itemset_dict.keys():
     if size == 1:
         continue # no rules of size 1 needed
 
     for antecedent_size in range(1, size):
         rules[size][antecedent_size] = {}
-    
+
     # look at each large itemset (i.e., list of literals with the current size)
     for large_itemset, large_support in itemset_dict[size].items():
         # vary the size of the antecedent
@@ -78,7 +82,7 @@ for size in itemset_dict.keys():
                 
                 confidence = confidence_numerator / antecedent_support
 
-                if confidence >= args.confidence and antecedent_support >= args.support:
+                if confidence >= confidence_threshold and antecedent_support >= args.support:
                     # fulfilled confidence and antecedent support requirements
                 
                     rule_novel = True
@@ -100,6 +104,9 @@ for size in itemset_dict.keys():
                         # no simpler rule exists that subsumes this rule --> store it!
                         rules[size][antecedent_size][rule_string(antecedent, consequent)] = [antecedent_support, confidence]
 
+    if args.dynamic:
+        # require higher confidence for larger rules -- halve the distance to 1.0 in each step
+        confidence_threshold += (1 - confidence_threshold) / 2
 
 # define names of output files
 summary_output_file = os.path.join(args.output_folder, "summary-{0}-{1}.csv".format(args.support, args.confidence))
@@ -108,8 +115,10 @@ rules_output_template = os.path.join(args.output_folder, "rules-{0}-{1}.csv")
 output_strings = ['rule_size,antecedent_size,num_rules\n']
 
 # iterate over everything in order to create output
-total_number_of_rules = 0
+total_number_of_rules = {}
 for rule_size, size_dict in rules.items():
+    
+    total_number_of_rules[rule_size] = 0
 
     for antecedent_size, rule_instances in size_dict.items():
         
@@ -117,7 +126,7 @@ for rule_size, size_dict in rules.items():
         # print length of list     
         if not args.quiet:
             print("\t\tNumber of rules with {0} concepts ({1} of them in antecedent): {2}".format(rule_size, antecedent_size, number_of_rules))
-        total_number_of_rules += len(rule_instances.keys())
+        total_number_of_rules[rule_size] += number_of_rules
         
         # store for output into file
         output_strings.append(",".join([str(rule_size), str(antecedent_size), str(number_of_rules)]) + '\n')
@@ -131,7 +140,8 @@ for rule_size, size_dict in rules.items():
                     line = "{0},{1},{2}\n".format(rule_string, rule_content[0], rule_content[1])
                     f.write(line)
 
-print("\tSupport {0}, Confidence {1}, Total number of rules: {2}".format(args.support, args.confidence, total_number_of_rules))
+number_of_rules_string = ", ".join([str(total_number_of_rules[size]) for size in range(2, len(total_number_of_rules.keys()) + 1)])
+print("\tSupport {0}, Confidence {1}, Total number of rules: {2}".format(args.support, args.confidence, number_of_rules_string))
 
 with open(summary_output_file, 'w') as f:
     for line in output_strings:
